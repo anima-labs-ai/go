@@ -25,10 +25,30 @@ import (
 
 func main() {
     client := anima.NewClient("ak_live_your_api_key")
+    ctx := context.Background()
 
-    // Services (agents, emails, cards, etc.) will be available
-    // as fields on the client in a future release.
-    _ = client
+    // Create an agent.
+    agent, err := client.Agents.Create(ctx, anima.CreateAgentParams{
+        OrgID: "org_123",
+        Name:  "My Agent",
+        Slug:  "my-agent",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Created agent: %s\n", agent.ID)
+
+    // Send an email.
+    msg, err := client.Messages.SendEmail(ctx, anima.SendEmailParams{
+        AgentID: agent.ID,
+        To:      []string{"user@example.com"},
+        Subject: "Hello from Anima",
+        Body:    "Sent by an AI agent.",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Sent message: %s (status: %s)\n", msg.ID, msg.Status)
 }
 ```
 
@@ -109,14 +129,76 @@ if errors.As(err, &apiErr) {
 | `ErrNetwork` | Network-level error |
 | `ErrRetryExhausted` | All retry attempts failed |
 
-## Pagination
+## Resource Services
 
-List endpoints return paginated results. Use `ListIterator` to iterate through all pages automatically:
+All resource services are available as fields on the `Client`:
+
+| Service | Description |
+|---------|-------------|
+| `client.Agents` | Create, list, update, delete agents; rotate API keys |
+| `client.Organizations` | Manage organizations and master keys |
+| `client.Messages` | Send email/SMS, list and search messages |
+| `client.Emails` | List emails, manage attachments |
+| `client.Domains` | Add/verify domains, DNS records, deliverability stats |
+| `client.Cards` | Virtual cards, spending policies, transactions, approvals |
+| `client.Phones` | Provision/release phone numbers |
+| `client.Vault` | Credential vault: store, search, generate passwords, TOTP |
+| `client.Security` | Content scanning, security events |
+| `client.Webhooks` | Webhook CRUD, test delivery, list deliveries |
+
+### Sending Email
 
 ```go
-iter := anima.NewListIterator(func(ctx context.Context, cursor string) (*anima.Page[Agent], error) {
-    // Your page-fetching logic here
-    return fetchAgentsPage(ctx, cursor)
+msg, err := client.Messages.SendEmail(ctx, anima.SendEmailParams{
+    AgentID: "agent_123",
+    To:      []string{"user@example.com"},
+    Subject: "Hello",
+    Body:    "Plain text body",
+    BodyHTML: "<h1>Hello</h1>",
+})
+```
+
+### Managing Cards
+
+```go
+card, err := client.Cards.Create(ctx, anima.CreateCardParams{
+    AgentID:         "agent_123",
+    Label:           "Marketing Budget",
+    SpendLimitDaily: anima.IntPtr(10000), // $100.00
+})
+
+// Freeze a card instantly.
+card, err = client.Cards.Freeze(ctx, card.ID)
+
+// Kill switch: freeze all cards for an agent.
+result, err := client.Cards.KillSwitch(ctx, anima.KillSwitchParams{
+    AgentID: "agent_123",
+    Active:  true,
+})
+```
+
+### Vault Credentials
+
+```go
+cred, err := client.Vault.CreateCredential(ctx, anima.CreateVaultCredentialParams{
+    AgentID: "agent_123",
+    Type:    anima.CredentialTypeLogin,
+    Name:    "GitHub",
+    Login: &anima.VaultLoginData{
+        Username: "bot@company.com",
+        Password: "s3cr3t",
+    },
+})
+```
+
+## Pagination
+
+List endpoints return paginated results. Use `ListAutoPaging` for automatic iteration:
+
+```go
+iter := client.Agents.ListAutoPaging(&anima.AgentListParams{
+    ListParams: anima.ListParams{Limit: 50},
+    OrgID:      "org_123",
 })
 
 for iter.Next(ctx) {
@@ -125,6 +207,17 @@ for iter.Next(ctx) {
 }
 if err := iter.Err(); err != nil {
     log.Fatal(err)
+}
+```
+
+Or fetch a single page manually:
+
+```go
+page, err := client.Agents.List(ctx, &anima.AgentListParams{
+    ListParams: anima.ListParams{Limit: 10},
+})
+for _, agent := range page.Items {
+    fmt.Println(agent.Name)
 }
 ```
 

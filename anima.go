@@ -6,8 +6,11 @@
 //	    anima.WithBaseURL("https://api.anima.com"),
 //	)
 //
-// Resource services (agents, emails, cards, etc.) are available as fields on the
-// Client struct. They will be populated in Task 8.
+// Resource services are available as fields on the Client struct:
+//
+//	client.Agents.Create(ctx, params)
+//	client.Messages.SendEmail(ctx, params)
+//	client.Cards.Create(ctx, params)
 package anima
 
 import (
@@ -32,17 +35,26 @@ type Client struct {
 	// httpClient handles low-level HTTP requests.
 	httpClient *httpClient
 
-	// Service fields — populated in Task 8.
-	// Agents        *AgentsService
-	// Cards         *CardsService
-	// Domains       *DomainsService
-	// Emails        *EmailsService
-	// Messages      *MessagesService
-	// Organizations *OrganizationsService
-	// Phones        *PhonesService
-	// Security      *SecurityService
-	// Vault         *VaultService
-	// Webhooks      *WebhooksService
+	// Agents provides methods for managing agents.
+	Agents *AgentsService
+	// Cards provides methods for managing cards, policies, and transactions.
+	Cards *CardsService
+	// Domains provides methods for managing email domains.
+	Domains *DomainsService
+	// Emails provides methods for listing emails and managing attachments.
+	Emails *EmailsService
+	// Messages provides methods for sending and listing messages.
+	Messages *MessagesService
+	// Organizations provides methods for managing organizations.
+	Organizations *OrganizationsService
+	// Phones provides methods for provisioning and managing phone numbers.
+	Phones *PhonesService
+	// Security provides methods for content scanning and security events.
+	Security *SecurityService
+	// Vault provides methods for managing the agent credential vault.
+	Vault *VaultService
+	// Webhooks provides methods for managing webhooks.
+	Webhooks *WebhooksService
 }
 
 // NewClient creates a new Anima API client.
@@ -68,13 +80,25 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		}
 	}
 
+	internal := &httpClient{
+		apiKey:     apiKey,
+		baseURL:    cfg.baseURL,
+		maxRetries: cfg.maxRetries,
+		client:     hc,
+	}
+
 	c := &Client{
-		httpClient: &httpClient{
-			apiKey:     apiKey,
-			baseURL:    cfg.baseURL,
-			maxRetries: cfg.maxRetries,
-			client:     hc,
-		},
+		httpClient:    internal,
+		Agents:        newAgentsService(internal),
+		Cards:         newCardsService(internal),
+		Domains:       newDomainsService(internal),
+		Emails:        newEmailsService(internal),
+		Messages:      newMessagesService(internal),
+		Organizations: newOrganizationsService(internal),
+		Phones:        newPhonesService(internal),
+		Security:      newSecurityService(internal),
+		Vault:         newVaultService(internal),
+		Webhooks:      newWebhooksService(internal),
 	}
 
 	return c
