@@ -35,6 +35,10 @@ type Client struct {
 	// httpClient handles low-level HTTP requests.
 	httpClient *httpClient
 
+	// A2A provides methods for agent-to-agent communication.
+	A2A *A2AService
+	// Addresses provides methods for managing agent physical addresses.
+	Addresses *AddressesService
 	// Agents provides methods for managing agents.
 	Agents *AgentsService
 	// Cards provides methods for managing cards, policies, and transactions.
@@ -43,16 +47,24 @@ type Client struct {
 	Domains *DomainsService
 	// Emails provides methods for listing emails and managing attachments.
 	Emails *EmailsService
+	// Identity provides methods for managing agent decentralized identity (DID).
+	Identity *IdentityService
 	// Messages provides methods for sending and listing messages.
 	Messages *MessagesService
 	// Organizations provides methods for managing organizations.
 	Organizations *OrganizationsService
 	// Phones provides methods for provisioning and managing phone numbers.
 	Phones *PhonesService
+	// Pods provides methods for managing agent compute pods.
+	Pods *PodsService
+	// Registry provides methods for the public agent registry.
+	Registry *RegistryService
 	// Security provides methods for content scanning and security events.
 	Security *SecurityService
 	// Vault provides methods for managing the agent credential vault.
 	Vault *VaultService
+	// Wallet provides methods for managing agent crypto wallets.
+	Wallet *WalletService
 	// Webhooks provides methods for managing webhooks.
 	Webhooks *WebhooksService
 }
@@ -89,15 +101,21 @@ func NewClient(apiKey string, opts ...Option) *Client {
 
 	c := &Client{
 		httpClient:    internal,
+		A2A:           newA2AService(internal),
+		Addresses:     newAddressesService(internal),
 		Agents:        newAgentsService(internal),
 		Cards:         newCardsService(internal),
 		Domains:       newDomainsService(internal),
 		Emails:        newEmailsService(internal),
+		Identity:      newIdentityService(internal),
 		Messages:      newMessagesService(internal),
 		Organizations: newOrganizationsService(internal),
 		Phones:        newPhonesService(internal),
+		Pods:          newPodsService(internal),
+		Registry:      newRegistryService(internal),
 		Security:      newSecurityService(internal),
 		Vault:         newVaultService(internal),
+		Wallet:        newWalletService(internal),
 		Webhooks:      newWebhooksService(internal),
 	}
 

@@ -135,15 +135,21 @@ All resource services are available as fields on the `Client`:
 
 | Service | Description |
 |---------|-------------|
+| `client.A2A` | Agent-to-agent task submission, listing, and cancellation |
+| `client.Addresses` | Physical/mailing addresses: CRUD, validation |
 | `client.Agents` | Create, list, update, delete agents; rotate API keys |
-| `client.Organizations` | Manage organizations and master keys |
-| `client.Messages` | Send email/SMS, list and search messages |
-| `client.Emails` | List emails, manage attachments |
-| `client.Domains` | Add/verify domains, DNS records, deliverability stats |
 | `client.Cards` | Virtual cards, spending policies, transactions, approvals |
+| `client.Domains` | Add/verify domains, DNS records, deliverability stats |
+| `client.Emails` | List emails, manage attachments |
+| `client.Identity` | DID documents, key rotation, verifiable credentials, agent cards |
+| `client.Messages` | Send email/SMS, list and search messages |
+| `client.Organizations` | Manage organizations and master keys |
 | `client.Phones` | Provision/release phone numbers |
-| `client.Vault` | Credential vault: store, search, generate passwords, TOTP |
+| `client.Pods` | Compute pods: create, list, update, delete, usage stats |
+| `client.Registry` | Public agent registry: register, search, lookup, update, unlist |
 | `client.Security` | Content scanning, security events |
+| `client.Vault` | Credential vault: store, search, generate passwords, TOTP |
+| `client.Wallet` | Crypto wallets: create, pay, X-402 fetch, transactions, freeze |
 | `client.Webhooks` | Webhook CRUD, test delivery, list deliveries |
 
 ### Sending Email
@@ -175,6 +181,95 @@ result, err := client.Cards.KillSwitch(ctx, anima.KillSwitchParams{
     AgentID: "agent_123",
     Active:  true,
 })
+```
+
+### Agent Identity (DID)
+
+```go
+// Get an agent's DID document.
+did, err := client.Identity.GetDID(ctx, "agent_123")
+fmt.Printf("DID: %s\n", did.ID)
+
+// Verify a credential.
+result, err := client.Identity.VerifyCredential(ctx, "eyJhbGciOi...")
+fmt.Printf("Valid: %v\n", result.Valid)
+```
+
+### Agent Registry
+
+```go
+// Register an agent in the public registry.
+entry, err := client.Registry.Register(ctx, anima.RegisterAgentParams{
+    DID:  "did:anima:agent_123",
+    Name: "My Agent",
+})
+
+// Search the registry.
+results, err := client.Registry.Search(ctx, anima.RegistrySearchParams{
+    Query: "email assistant",
+})
+```
+
+### Wallet
+
+```go
+// Create a wallet for an agent.
+wallet, err := client.Wallet.Create(ctx, "agent_123", nil)
+
+// Make a payment.
+payment, err := client.Wallet.Pay(ctx, "agent_123", anima.WalletPayParams{
+    To:     "did:anima:recipient",
+    Amount: "1.50",
+})
+
+// Freeze a wallet.
+err = client.Wallet.Freeze(ctx, "agent_123")
+```
+
+### Pods
+
+```go
+// Create a compute pod.
+pod, err := client.Pods.Create(ctx, anima.CreatePodParams{
+    AgentID: "agent_123",
+    Name:    "worker-1",
+    Image:   "agent-runtime:latest",
+})
+
+// Check usage.
+usage, err := client.Pods.Usage(ctx, pod.ID)
+fmt.Printf("CPU: %.2f%%\n", usage.CPU)
+```
+
+### A2A (Agent-to-Agent)
+
+```go
+// Submit a task to another agent.
+task, err := client.A2A.SubmitTask(ctx, "agent_456", anima.SubmitA2ATaskParams{
+    Input: map[string]string{"query": "summarize this document"},
+})
+
+// Check task status.
+task, err = client.A2A.GetTask(ctx, "agent_456", task.ID)
+fmt.Printf("Status: %s\n", task.Status)
+```
+
+### Addresses
+
+```go
+// Create an address for an agent.
+addr, err := client.Addresses.Create(ctx, anima.CreateAddressParams{
+    AgentID:    "agent_123",
+    Line1:      "123 Main St",
+    City:       "San Francisco",
+    State:      "CA",
+    PostalCode: "94105",
+    Country:    "US",
+})
+
+// Validate the address.
+validation, err := client.Addresses.Validate(ctx, addr.ID, "agent_123")
+fmt.Printf("Deliverable: %v\n", validation.Deliverable)
 ```
 
 ### Vault Credentials
