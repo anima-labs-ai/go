@@ -35,6 +35,11 @@ type Client struct {
 	// httpClient handles low-level HTTP requests.
 	httpClient *httpClient
 
+	// Anomaly provides methods for anomaly detection alerts, rules, baselines, and quarantine.
+	Anomaly *AnomalyService
+	// Audit provides methods for querying and exporting immutable audit logs.
+	Audit *AuditService
+
 	// A2A provides methods for agent-to-agent communication.
 	A2A *A2AService
 	// Addresses provides methods for managing agent physical addresses.
@@ -43,6 +48,8 @@ type Client struct {
 	Agents *AgentsService
 	// Cards provides methods for managing cards, policies, and transactions.
 	Cards *CardsService
+	// Compliance provides methods for compliance controls, reports, dashboards, and DSARs.
+	Compliance *ComplianceService
 	// Domains provides methods for managing email domains.
 	Domains *DomainsService
 	// Emails provides methods for listing emails and managing attachments.
@@ -101,10 +108,13 @@ func NewClient(apiKey string, opts ...Option) *Client {
 
 	c := &Client{
 		httpClient:    internal,
+		Anomaly:       newAnomalyService(internal),
+		Audit:         newAuditService(internal),
 		A2A:           newA2AService(internal),
 		Addresses:     newAddressesService(internal),
 		Agents:        newAgentsService(internal),
 		Cards:         newCardsService(internal),
+		Compliance:    newComplianceService(internal),
 		Domains:       newDomainsService(internal),
 		Emails:        newEmailsService(internal),
 		Identity:      newIdentityService(internal),

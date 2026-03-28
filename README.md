@@ -138,7 +138,10 @@ All resource services are available as fields on the `Client`:
 | `client.A2A` | Agent-to-agent task submission, listing, and cancellation |
 | `client.Addresses` | Physical/mailing addresses: CRUD, validation |
 | `client.Agents` | Create, list, update, delete agents; rotate API keys |
+| `client.Anomaly` | Anomaly alerts, detection rules, baselines, quarantine |
+| `client.Audit` | Immutable audit logs: list, get, export (CSV/JSON) |
 | `client.Cards` | Virtual cards, spending policies, transactions, approvals |
+| `client.Compliance` | Controls, reports, dashboard, DSARs (SOC2/GDPR/PCI) |
 | `client.Domains` | Add/verify domains, DNS records, deliverability stats |
 | `client.Emails` | List emails, manage attachments |
 | `client.Identity` | DID documents, key rotation, verifiable credentials, agent cards |
@@ -283,6 +286,69 @@ cred, err := client.Vault.CreateCredential(ctx, anima.CreateVaultCredentialParam
         Username: "bot@company.com",
         Password: "s3cr3t",
     },
+})
+```
+
+### Audit Logs
+
+```go
+// List audit logs with filters.
+page, err := client.Audit.List(ctx, "org_123", &anima.AuditLogListParams{
+    ActorType:    anima.AuditActorAgent,
+    ResourceType: "message",
+    From:         "2026-01-01T00:00:00Z",
+    To:           "2026-03-01T00:00:00Z",
+})
+
+// Export audit logs as CSV.
+export, err := client.Audit.Export(ctx, "org_123", &anima.AuditLogExportParams{
+    Format: anima.AuditExportFormatCSV,
+    From:   "2026-01-01T00:00:00Z",
+})
+fmt.Printf("Download: %s (%d records)\n", export.URL, export.RecordCount)
+```
+
+### Compliance
+
+```go
+// Seed SOC 2 controls for an organization.
+seed, err := client.Compliance.SeedFramework(ctx, "org_123", anima.SeedFrameworkInput{
+    Framework: anima.ComplianceFrameworkSOC2,
+})
+fmt.Printf("Created %d controls\n", seed.ControlsCreated)
+
+// View compliance dashboard.
+dashboard, err := client.Compliance.GetDashboard(ctx, "org_123")
+fmt.Printf("Overall score: %.1f%%\n", dashboard.OverallScore)
+
+// Create a GDPR data subject access request.
+dsar, err := client.Compliance.CreateDSAR(ctx, "org_123", anima.CreateDSARInput{
+    SubjectEmail: "user@example.com",
+    RequestType:  anima.DSARRequestTypeDeletion,
+})
+```
+
+### Anomaly Detection
+
+```go
+// Create an anomaly detection rule.
+rule, err := client.Anomaly.CreateRule(ctx, "org_123", anima.CreateAnomalyRuleInput{
+    Name:      "High email volume",
+    Metric:    anima.AnomalyMetricEmailSendRate,
+    Condition: anima.AnomalyConditionZScoreGT,
+    Threshold: 3.0,
+    Severity:  anima.AnomalySeverityCritical,
+})
+
+// List triggered alerts.
+alerts, err := client.Anomaly.ListAlerts(ctx, "org_123", &anima.AnomalyAlertListParams{
+    Status: anima.AnomalyAlertStatusTriggered,
+})
+
+// Quarantine a misbehaving agent.
+q, err := client.Anomaly.Quarantine(ctx, "org_123", "agent_123", anima.QuarantineInput{
+    Level:  anima.QuarantineLevelHard,
+    Reason: "Unusual email send volume",
 })
 ```
 
