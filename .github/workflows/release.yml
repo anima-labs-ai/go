@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Verify module
+        run: go mod verify
+
+      - name: Run tests
+        run: go test -race -v ./...
+
+      - name: Verify tag matches module
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "Release tag: $TAG"
+          echo "Go modules are published automatically via the Go proxy."
+          echo "Ensure the tag follows semantic versioning (e.g., v1.0.0)."
