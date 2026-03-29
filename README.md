@@ -1,6 +1,6 @@
 # Anima Go SDK
 
-Official Go client library for the [Anima](https://anima.com) API.
+Official Go client library for the [Anima](https://useanima.sh) API.
 
 ## Installation
 
@@ -60,7 +60,7 @@ Use functional options to customize the client:
 import "time"
 
 client := anima.NewClient("ak_live_...",
-    anima.WithBaseURL("https://api.staging.anima.com"),
+    anima.WithBaseURL("https://api.staging.useanima.sh"),
     anima.WithTimeout(10 * time.Second),
     anima.WithMaxRetries(5),
 )

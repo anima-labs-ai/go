@@ -3,7 +3,7 @@
 // Create a client with your API key:
 //
 //	client := anima.NewClient("ak_live_...",
-//	    anima.WithBaseURL("https://api.anima.com"),
+//	    anima.WithBaseURL("https://api.useanima.sh"),
 //	)
 //
 // Resource services are available as fields on the Client struct:
@@ -21,7 +21,7 @@ import (
 
 const (
 	// DefaultBaseURL is the production Anima API endpoint.
-	DefaultBaseURL = "https://api.anima.com"
+	DefaultBaseURL = "https://api.useanima.sh"
 	// DefaultTimeout is the default per-request timeout.
 	DefaultTimeout = 30 * time.Second
 	// DefaultMaxRetries is the default number of retries for failed requests.
