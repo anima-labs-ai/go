@@ -24,14 +24,17 @@ const (
 
 // Webhook represents a webhook configuration.
 type Webhook struct {
-	ID          string             `json:"id"`
-	OrgID       string             `json:"orgId"`
-	URL         string             `json:"url"`
-	Events      []WebhookEventType `json:"events"`
-	Active      bool               `json:"active"`
-	Description *string            `json:"description"`
-	CreatedAt   string             `json:"createdAt"`
-	UpdatedAt   string             `json:"updatedAt"`
+	ID                  string             `json:"id"`
+	OrgID               string             `json:"orgId"`
+	URL                 string             `json:"url"`
+	Events              []WebhookEventType `json:"events"`
+	Active              bool               `json:"active"`
+	Description         *string            `json:"description"`
+	ConsecutiveFailures int                `json:"consecutiveFailures"`
+	DisabledReason      *string            `json:"disabledReason"`
+	DisabledAt          *string            `json:"disabledAt"`
+	CreatedAt           string             `json:"createdAt"`
+	UpdatedAt           string             `json:"updatedAt"`
 }
 
 // CreateWebhookParams contains the parameters for creating a webhook.
