@@ -174,7 +174,7 @@ func (s *MessagesService) SendEmail(ctx context.Context, params SendEmailParams)
 
 // SendSMS sends an SMS message.
 func (s *MessagesService) SendSMS(ctx context.Context, params SendSMSParams) (*Message, error) {
-	msg, err := Do[Message](ctx, s.client, http.MethodPost, "/messages/sms", params, nil)
+	msg, err := Do[Message](ctx, s.client, http.MethodPost, "/phone/send-sms", params, nil)
 	if err != nil {
 		return nil, err
 	}

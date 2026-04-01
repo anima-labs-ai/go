@@ -2,10 +2,31 @@ package anima
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 )
+
+// SearchPhonesParams contains parameters for searching available phone numbers.
+type SearchPhonesParams struct {
+	CountryCode  string   `json:"countryCode,omitempty"`
+	AreaCode     string   `json:"areaCode,omitempty"`
+	Capabilities []string `json:"capabilities,omitempty"`
+	Limit        int      `json:"limit,omitempty"`
+}
+
+// AvailableNumber represents a phone number available for provisioning.
+type AvailableNumber struct {
+	PhoneNumber  string           `json:"phoneNumber"`
+	Region       string           `json:"region,omitempty"`
+	Capabilities PhoneCapabilities `json:"capabilities"`
+	MonthlyCost  float64          `json:"monthlyCost,omitempty"`
+}
+
+// AvailableNumberList wraps a list of available phone numbers.
+type AvailableNumberList struct {
+	Items []AvailableNumber `json:"items"`
+}
 
 // ProvisionPhoneParams contains the parameters for provisioning a phone number.
 type ProvisionPhoneParams struct {
@@ -15,26 +36,15 @@ type ProvisionPhoneParams struct {
 	Capabilities []string `json:"capabilities,omitempty"`
 }
 
-// PhoneConfigUpdateParams contains the parameters for updating a phone's configuration.
-type PhoneConfigUpdateParams struct {
-	IsPrimary    *bool                  `json:"isPrimary,omitempty"`
-	TenDLCStatus TenDLCStatus           `json:"tenDlcStatus,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+// ReleasePhoneParams contains the parameters for releasing a phone number.
+type ReleasePhoneParams struct {
+	AgentID     string `json:"agentId"`
+	PhoneNumber string `json:"phoneNumber"`
 }
 
 // PhoneListParams contains parameters for listing phone numbers.
 type PhoneListParams struct {
-	ListParams
 	AgentID string
-}
-
-// ToQuery converts PhoneListParams to URL query values.
-func (p PhoneListParams) ToQuery() url.Values {
-	q := p.ListParams.ToQuery()
-	if p.AgentID != "" {
-		q.Set("agentId", p.AgentID)
-	}
-	return q
 }
 
 // PhoneList wraps a list of phone identities.
@@ -52,6 +62,28 @@ func newPhonesService(c *httpClient) *PhonesService {
 	return &PhonesService{client: c}
 }
 
+// Search searches for available phone numbers.
+func (s *PhonesService) Search(ctx context.Context, params SearchPhonesParams) (*AvailableNumberList, error) {
+	q := url.Values{}
+	if params.CountryCode != "" {
+		q.Set("countryCode", params.CountryCode)
+	}
+	if params.AreaCode != "" {
+		q.Set("areaCode", params.AreaCode)
+	}
+	for _, cap := range params.Capabilities {
+		q.Add("capabilities[]", cap)
+	}
+	if params.Limit > 0 {
+		q.Set("limit", strconv.Itoa(params.Limit))
+	}
+	list, err := Do[AvailableNumberList](ctx, s.client, http.MethodGet, "/phone/search", nil, q)
+	if err != nil {
+		return nil, err
+	}
+	return &list, nil
+}
+
 // Provision provisions a new phone number for an agent.
 func (s *PhonesService) Provision(ctx context.Context, params ProvisionPhoneParams) (*PhoneIdentity, error) {
 	phone, err := Do[PhoneIdentity](ctx, s.client, http.MethodPost, "/phone/provision", params, nil)
@@ -61,50 +93,20 @@ func (s *PhonesService) Provision(ctx context.Context, params ProvisionPhonePara
 	return &phone, nil
 }
 
-// Get retrieves a phone identity by ID.
-func (s *PhonesService) Get(ctx context.Context, id string) (*PhoneIdentity, error) {
-	phone, err := Do[PhoneIdentity](ctx, s.client, http.MethodGet, fmt.Sprintf("/phones/%s", id), nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &phone, nil
-}
-
-// List returns a list of phone numbers. If AgentID is provided, returns numbers
-// for that specific agent.
-func (s *PhonesService) List(ctx context.Context, params *PhoneListParams) (*PhoneList, error) {
-	if params != nil && params.AgentID != "" {
-		q := url.Values{}
-		q.Set("agentId", params.AgentID)
-		list, err := Do[PhoneList](ctx, s.client, http.MethodGet, "/phone/numbers", nil, q)
-		if err != nil {
-			return nil, err
-		}
-		return &list, nil
-	}
-
-	var q url.Values
-	if params != nil {
-		q = params.ToQuery()
-	}
-	list, err := Do[PhoneList](ctx, s.client, http.MethodGet, "/phones", nil, q)
+// List returns a list of phone numbers for the specified agent.
+func (s *PhonesService) List(ctx context.Context, params PhoneListParams) (*PhoneList, error) {
+	q := url.Values{}
+	q.Set("agentId", params.AgentID)
+	list, err := Do[PhoneList](ctx, s.client, http.MethodGet, "/phone/numbers", nil, q)
 	if err != nil {
 		return nil, err
 	}
 	return &list, nil
 }
 
-// Release releases (deletes) a phone number.
-func (s *PhonesService) Release(ctx context.Context, id string) error {
-	_, err := Do[struct{}](ctx, s.client, http.MethodDelete, fmt.Sprintf("/phones/%s", id), nil, nil)
+// Release releases a phone number from an agent.
+func (s *PhonesService) Release(ctx context.Context, params ReleasePhoneParams) error {
+	_, err := Do[struct{ Success bool }](ctx, s.client, http.MethodPost, "/phone/release", params, nil)
 	return err
 }
 
-// UpdateConfig updates the configuration of a phone number.
-func (s *PhonesService) UpdateConfig(ctx context.Context, id string, params PhoneConfigUpdateParams) (*PhoneIdentity, error) {
-	phone, err := Do[PhoneIdentity](ctx, s.client, http.MethodPatch, fmt.Sprintf("/phones/%s", id), params, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &phone, nil
-}
