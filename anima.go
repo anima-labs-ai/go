@@ -72,6 +72,10 @@ type Client struct {
 	Vault *VaultService
 	// Wallet provides methods for managing agent crypto wallets.
 	Wallet *WalletService
+	// Voices provides methods for browsing the voice catalog.
+	Voices *VoicesService
+	// Calls provides methods for managing voice calls.
+	Calls *CallsService
 	// Webhooks provides methods for managing webhooks.
 	Webhooks *WebhooksService
 }
@@ -126,6 +130,8 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		Security:      newSecurityService(internal),
 		Vault:         newVaultService(internal),
 		Wallet:        newWalletService(internal),
+		Voices:        newVoicesService(internal),
+		Calls:         newCallsService(internal),
 		Webhooks:      newWebhooksService(internal),
 	}
 
