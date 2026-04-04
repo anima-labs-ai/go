@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/url"
@@ -27,6 +28,8 @@ type httpClient struct {
 	baseURL    string
 	maxRetries int
 	client     *http.Client
+	debug      bool
+	logger     *slog.Logger
 }
 
 // apiErrorEnvelope matches the JSON error shape returned by the Anima API.
@@ -67,6 +70,8 @@ func Do[T any](ctx context.Context, hc *httpClient, method, path string, body an
 		}
 	}
 
+	startTime := time.Now()
+
 	for attempt := 0; attempt <= hc.maxRetries; attempt++ {
 		r, reqErr := bodyReader()
 		if reqErr != nil {
@@ -84,6 +89,10 @@ func Do[T any](ctx context.Context, hc *httpClient, method, path string, body an
 			req.Header.Set("Content-Type", "application/json")
 		}
 
+		if hc.debug && hc.logger != nil && attempt == 0 {
+			hc.logger.Debug("request", "method", method, "path", path)
+		}
+
 		resp, doErr := hc.client.Do(req)
 		if doErr != nil {
 			// Context cancellation — do not retry.
@@ -96,6 +105,11 @@ func Do[T any](ctx context.Context, hc *httpClient, method, path string, body an
 				continue
 			}
 			return zero, newNetworkError(doErr.Error())
+		}
+
+		if hc.debug && hc.logger != nil {
+			hc.logger.Debug("response", "method", method, "path", path,
+				"status", resp.StatusCode, "duration_ms", time.Since(startTime).Milliseconds())
 		}
 
 		// Success.

@@ -14,7 +14,9 @@
 package anima
 
 import (
+	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -82,12 +84,31 @@ type Client struct {
 
 // NewClient creates a new Anima API client.
 //
-//	client := anima.NewClient("ak_live_...",
+// If apiKey is empty, the ANIMA_API_KEY environment variable is used.
+// If no key is found, NewClient panics.
+//
+// The base URL defaults to DefaultBaseURL, but can be overridden with
+// WithBaseURL or the ANIMA_API_URL environment variable.
+//
+//	client := anima.NewClient("",  // uses ANIMA_API_KEY env var
 //	    anima.WithTimeout(10 * time.Second),
-//	    anima.WithMaxRetries(5),
 //	)
 func NewClient(apiKey string, opts ...Option) *Client {
+	// Environment variable fallback for API key.
+	if apiKey == "" {
+		apiKey = os.Getenv("ANIMA_API_KEY")
+	}
+	if apiKey == "" {
+		panic("anima: missing API key. Pass it to NewClient or set the ANIMA_API_KEY environment variable.")
+	}
+
 	cfg := defaultConfig()
+
+	// Environment variable fallback for base URL.
+	if envURL := os.Getenv("ANIMA_API_URL"); envURL != "" {
+		cfg.baseURL = envURL
+	}
+
 	for _, o := range opts {
 		o(&cfg)
 	}
@@ -103,11 +124,19 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		}
 	}
 
+	debug := os.Getenv("ANIMA_LOG") == "debug"
+	var logger *slog.Logger
+	if debug {
+		logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	}
+
 	internal := &httpClient{
 		apiKey:     apiKey,
 		baseURL:    cfg.baseURL,
 		maxRetries: cfg.maxRetries,
 		client:     hc,
+		debug:      debug,
+		logger:     logger,
 	}
 
 	c := &Client{
