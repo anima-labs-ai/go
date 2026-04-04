@@ -39,7 +39,6 @@ type PhoneProvider string
 
 const (
 	PhoneProviderTelnyx PhoneProvider = "TELNYX"
-	PhoneProviderTwilio PhoneProvider = "TWILIO"
 )
 
 // TenDLCStatus represents the 10DLC registration status.
