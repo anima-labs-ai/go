@@ -162,6 +162,83 @@ type VaultCredentialList struct {
 	Items []VaultCredential `json:"items"`
 }
 
+// SharePermission represents the permission level for a shared credential.
+type SharePermission string
+
+const (
+	SharePermissionRead   SharePermission = "READ"
+	SharePermissionUse    SharePermission = "USE"
+	SharePermissionManage SharePermission = "MANAGE"
+)
+
+// TokenScope represents the scope of an ephemeral vault token.
+type TokenScope string
+
+const (
+	TokenScopeAutofill TokenScope = "autofill"
+	TokenScopeProxy    TokenScope = "proxy"
+	TokenScopeExport   TokenScope = "export"
+)
+
+// VaultShare represents a credential share between agents.
+type VaultShare struct {
+	ID            string  `json:"id"`
+	CredentialID  string  `json:"credentialId"`
+	SourceAgentID string  `json:"sourceAgentId"`
+	TargetAgentID string  `json:"targetAgentId"`
+	Permission    string  `json:"permission"`
+	ExpiresAt     *string `json:"expiresAt"`
+	CreatedAt     string  `json:"createdAt"`
+}
+
+// VaultShareList wraps a list of vault shares.
+type VaultShareList struct {
+	Items []VaultShare `json:"items"`
+}
+
+// ShareCredentialParams contains parameters for sharing a credential.
+type ShareCredentialParams struct {
+	AgentID          string `json:"agentId"`
+	CredentialID     string `json:"credentialId"`
+	TargetAgentID    string `json:"targetAgentId"`
+	Permission       string `json:"permission"`
+	ExpiresInSeconds *int   `json:"expiresInSeconds,omitempty"`
+}
+
+// RevokeShareParams contains parameters for revoking a share.
+type RevokeShareParams struct {
+	ShareID string `json:"shareId"`
+	AgentID string `json:"agentId,omitempty"`
+}
+
+// VaultToken represents an ephemeral vault token.
+type VaultToken struct {
+	Token        string `json:"token"`
+	CredentialID string `json:"credentialId"`
+	Scope        string `json:"scope"`
+	ExpiresAt    string `json:"expiresAt"`
+}
+
+// CreateTokenParams contains parameters for creating an ephemeral token.
+type CreateTokenParams struct {
+	CredentialID string `json:"credentialId"`
+	Scope        string `json:"scope"`
+	AgentID      string `json:"agentId,omitempty"`
+	TTLSeconds   *int   `json:"ttlSeconds,omitempty"`
+}
+
+// RevokeTokensParams contains parameters for revoking tokens.
+type RevokeTokensParams struct {
+	CredentialID string `json:"credentialId"`
+	AgentID      string `json:"agentId,omitempty"`
+}
+
+// RevokeTokensResult contains the result of revoking tokens.
+type RevokeTokensResult struct {
+	Success bool `json:"success"`
+	Revoked int  `json:"revoked"`
+}
+
 // VaultService provides methods for managing the agent credential vault.
 type VaultService struct {
 	client *httpClient
@@ -291,4 +368,67 @@ func (s *VaultService) Sync(ctx context.Context, agentID string) error {
 	}{AgentID: agentID}
 	_, err := Do[SuccessResult](ctx, s.client, http.MethodPost, "/vault/sync", body, nil)
 	return err
+}
+
+// --- Sharing ---
+
+// ShareCredential shares a vault credential with another agent.
+func (s *VaultService) ShareCredential(ctx context.Context, params ShareCredentialParams) (*VaultShare, error) {
+	share, err := Do[VaultShare](ctx, s.client, http.MethodPost, "/vault/share", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &share, nil
+}
+
+// ListShares lists credential shares granted by or received by an agent.
+func (s *VaultService) ListShares(ctx context.Context, direction string, agentID string) (*VaultShareList, error) {
+	q := url.Values{}
+	q.Set("direction", direction)
+	if agentID != "" {
+		q.Set("agentId", agentID)
+	}
+	list, err := Do[VaultShareList](ctx, s.client, http.MethodGet, "/vault/shares", nil, q)
+	if err != nil {
+		return nil, err
+	}
+	return &list, nil
+}
+
+// RevokeShare revokes a previously granted credential share.
+func (s *VaultService) RevokeShare(ctx context.Context, params RevokeShareParams) error {
+	_, err := Do[SuccessResult](ctx, s.client, http.MethodPost, "/vault/share/revoke", params, nil)
+	return err
+}
+
+// --- Ephemeral Tokens ---
+
+// CreateToken creates a short-lived ephemeral token for a credential.
+func (s *VaultService) CreateToken(ctx context.Context, params CreateTokenParams) (*VaultToken, error) {
+	token, err := Do[VaultToken](ctx, s.client, http.MethodPost, "/vault/token", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &token, nil
+}
+
+// ExchangeToken exchanges an ephemeral vtk_ token for the underlying credential.
+func (s *VaultService) ExchangeToken(ctx context.Context, token string) (*VaultCredential, error) {
+	body := struct {
+		Token string `json:"token"`
+	}{Token: token}
+	cred, err := Do[VaultCredential](ctx, s.client, http.MethodPost, "/vault/token/exchange", body, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &cred, nil
+}
+
+// RevokeTokens revokes all active ephemeral tokens for a credential.
+func (s *VaultService) RevokeTokens(ctx context.Context, params RevokeTokensParams) (*RevokeTokensResult, error) {
+	result, err := Do[RevokeTokensResult](ctx, s.client, http.MethodPost, "/vault/token/revoke", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

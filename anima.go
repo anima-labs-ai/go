@@ -72,6 +72,8 @@ type Client struct {
 	Security *SecurityService
 	// Vault provides methods for managing the agent credential vault.
 	Vault *VaultService
+	// VaultOAuth provides methods for managing OAuth connections.
+	VaultOAuth *VaultOAuthService
 	// Wallet provides methods for managing agent crypto wallets.
 	Wallet *WalletService
 	// Voices provides methods for browsing the voice catalog.
@@ -158,6 +160,7 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		Registry:      newRegistryService(internal),
 		Security:      newSecurityService(internal),
 		Vault:         newVaultService(internal),
+		VaultOAuth:    newVaultOAuthService(internal),
 		Wallet:        newWalletService(internal),
 		Voices:        newVoicesService(internal),
 		Calls:         newCallsService(internal),
