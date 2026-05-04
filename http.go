@@ -187,7 +187,7 @@ func (hc *httpClient) buildURL(path string, query url.Values) (string, error) {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	u, err := url.Parse(hc.baseURL + "/api" + path)
+	u, err := url.Parse(hc.baseURL + path)
 	if err != nil {
 		return "", err
 	}
