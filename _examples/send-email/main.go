@@ -13,7 +13,7 @@ import (
 	"log"
 	"os"
 
-	anima "github.com/anima-labs/anima-go"
+	anima "github.com/anima-labs-ai/go"
 )
 
 func main() {

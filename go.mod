@@ -1,4 +1,4 @@
-module github.com/anima-labs/anima-go
+module github.com/anima-labs-ai/go
 
 go 1.22
 
