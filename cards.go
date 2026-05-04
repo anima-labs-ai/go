@@ -29,7 +29,7 @@ type Card struct {
 	ID                 string     `json:"id"`
 	AgentID            string     `json:"agentId"`
 	OrgID              string     `json:"orgId"`
-	StripeCardID       string     `json:"stripeCardId"`
+	ProviderCardID     string     `json:"providerCardId"`
 	CardType           CardType   `json:"cardType"`
 	Status             CardStatus `json:"status"`
 	Last4              string     `json:"last4"`

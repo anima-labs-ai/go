@@ -20,7 +20,7 @@ func newTestClient(handler http.Handler) (*Client, *httptest.Server) {
 
 func TestAgentsService_Create(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/agents", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agents", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
@@ -82,7 +82,7 @@ func TestAgentsService_Create(t *testing.T) {
 
 func TestAgentsService_Get(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/agents/agent_abc", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agents/agent_abc", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
@@ -111,7 +111,7 @@ func TestAgentsService_Get(t *testing.T) {
 
 func TestAgentsService_List(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/agents", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agents", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
@@ -154,7 +154,7 @@ func TestAgentsService_List(t *testing.T) {
 
 func TestAgentsService_Update(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/agents/agent_abc", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agents/agent_abc", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
 			t.Errorf("expected PATCH, got %s", r.Method)
 		}
@@ -183,7 +183,7 @@ func TestAgentsService_Update(t *testing.T) {
 
 func TestAgentsService_Delete(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/agents/agent_abc", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agents/agent_abc", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
 			t.Errorf("expected DELETE, got %s", r.Method)
 		}
@@ -201,7 +201,7 @@ func TestAgentsService_Delete(t *testing.T) {
 
 func TestAgentsService_RotateKey(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/agents/agent_abc/rotate-key", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agents/agent_abc/rotate-key", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
@@ -228,7 +228,7 @@ func TestAgentsService_RotateKey(t *testing.T) {
 func TestAgentsService_ListAutoPaging(t *testing.T) {
 	callCount := 0
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/agents", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agents", func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		w.Header().Set("Content-Type", "application/json")
 

@@ -9,7 +9,7 @@ import (
 
 func TestVaultService_ShareCredential(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/vault/share", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/vault/share", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
@@ -61,7 +61,7 @@ func TestVaultService_ShareCredential(t *testing.T) {
 
 func TestVaultService_ListShares(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/vault/shares", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/vault/shares", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
@@ -99,7 +99,7 @@ func TestVaultService_ListShares(t *testing.T) {
 
 func TestVaultService_RevokeShare(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/vault/share/revoke", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/vault/share/revoke", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
@@ -129,7 +129,7 @@ func TestVaultService_RevokeShare(t *testing.T) {
 
 func TestVaultService_CreateToken(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/vault/token", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/vault/token", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
@@ -174,7 +174,7 @@ func TestVaultService_CreateToken(t *testing.T) {
 
 func TestVaultService_ExchangeToken(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/vault/token/exchange", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/vault/token/exchange", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
@@ -219,7 +219,7 @@ func TestVaultService_ExchangeToken(t *testing.T) {
 
 func TestVaultService_RevokeTokens(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/vault/token/revoke", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/vault/token/revoke", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}

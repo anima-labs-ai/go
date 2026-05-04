@@ -420,6 +420,10 @@ The SDK automatically retries failed requests with exponential backoff:
 - **Retry-After:** Honored when present in response headers
 - **Default retries:** 3 (configurable with `WithMaxRetries`)
 
+## Community
+
+Join the [Anima Discord](https://discord.gg/pY3GK59Z9E) to ask questions in `#go-sdk`, share what you're building in `#showcase`, and stay up to date with releases in `#announcements`.
+
 ## License
 
 See [LICENSE](LICENSE) for details.
