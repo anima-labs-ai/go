@@ -14,7 +14,6 @@ type AnomalyMetric string
 const (
 	AnomalyMetricEmailSendRate    AnomalyMetric = "email_send_rate"
 	AnomalyMetricSMSSendRate      AnomalyMetric = "sms_send_rate"
-	AnomalyMetricCardTxnCount     AnomalyMetric = "card_txn_count"
 	AnomalyMetricVaultAccessRate  AnomalyMetric = "vault_access_rate"
 	AnomalyMetricAPICallRate      AnomalyMetric = "api_call_rate"
 	AnomalyMetricUniqueRecipients AnomalyMetric = "unique_recipients"

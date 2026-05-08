@@ -140,7 +140,6 @@ All resource services are available as fields on the `Client`:
 | `client.Agents` | Create, list, update, delete agents; rotate API keys |
 | `client.Anomaly` | Anomaly alerts, detection rules, baselines, quarantine |
 | `client.Audit` | Immutable audit logs: list, get, export (CSV/JSON) |
-| `client.Cards` | Virtual cards, spending policies, transactions, approvals |
 | `client.Compliance` | Controls, reports, dashboard, DSARs (SOC2/GDPR/PCI) |
 | `client.Domains` | Add/verify domains, DNS records, deliverability stats |
 | `client.Emails` | List emails, manage attachments |
@@ -164,25 +163,6 @@ msg, err := client.Messages.SendEmail(ctx, anima.SendEmailParams{
     Subject: "Hello",
     Body:    "Plain text body",
     BodyHTML: "<h1>Hello</h1>",
-})
-```
-
-### Managing Cards
-
-```go
-card, err := client.Cards.Create(ctx, anima.CreateCardParams{
-    AgentID:         "agent_123",
-    Label:           "Marketing Budget",
-    SpendLimitDaily: anima.IntPtr(10000), // $100.00
-})
-
-// Freeze a card instantly.
-card, err = client.Cards.Freeze(ctx, card.ID)
-
-// Kill switch: freeze all cards for an agent.
-result, err := client.Cards.KillSwitch(ctx, anima.KillSwitchParams{
-    AgentID: "agent_123",
-    Active:  true,
 })
 ```
 

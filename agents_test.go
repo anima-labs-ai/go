@@ -279,9 +279,6 @@ func TestNewClient_ServicesWired(t *testing.T) {
 	if client.Agents == nil {
 		t.Error("Agents service is nil")
 	}
-	if client.Cards == nil {
-		t.Error("Cards service is nil")
-	}
 	if client.Domains == nil {
 		t.Error("Domains service is nil")
 	}

@@ -10,7 +10,6 @@
 //
 //	client.Agents.Create(ctx, params)
 //	client.Messages.SendEmail(ctx, params)
-//	client.Cards.Create(ctx, params)
 package anima
 
 import (
@@ -48,8 +47,6 @@ type Client struct {
 	Addresses *AddressesService
 	// Agents provides methods for managing agents.
 	Agents *AgentsService
-	// Cards provides methods for managing cards, policies, and transactions.
-	Cards *CardsService
 	// Compliance provides methods for compliance controls, reports, dashboards, and DSARs.
 	Compliance *ComplianceService
 	// Domains provides methods for managing email domains.
@@ -148,7 +145,6 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		A2A:           newA2AService(internal),
 		Addresses:     newAddressesService(internal),
 		Agents:        newAgentsService(internal),
-		Cards:         newCardsService(internal),
 		Compliance:    newComplianceService(internal),
 		Domains:       newDomainsService(internal),
 		Emails:        newEmailsService(internal),
