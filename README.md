@@ -362,6 +362,34 @@ for _, agent := range page.Items {
 }
 ```
 
+## Managing Webhooks
+
+Create a webhook and configure the auth Anima presents to your endpoint (in
+addition to the always-on `X-Anima-Signature` HMAC) plus delivery throttling:
+
+```go
+rateLimit := 120
+maxAttempts := 5
+
+wh, err := client.Webhooks.Create(ctx, anima.CreateWebhookParams{
+    URL:    "https://example.com/anima/webhook",
+    Events: []anima.WebhookEventType{anima.WebhookEventMessageReceived},
+    // Auth Anima sends to your endpoint on each delivery. Also available:
+    // anima.NewBasicAuth(user, pass), anima.NewCustomHeaderAuth(name, value), anima.NewNoAuth().
+    AuthConfig:         anima.NewBearerAuth("your-endpoint-token"),
+    RateLimitPerMinute: &rateLimit,  // omit for unlimited
+    MaxAttempts:        &maxAttempts, // 1-10, default 3
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("created webhook", wh.ID, "with auth scheme", wh.AuthType)
+```
+
+The credential you set (token / password / header value) is **write-only** — it
+is never returned by `Get` or `List`. To remove auth when updating, pass
+`anima.NewNoAuth()`.
+
 ## Webhook Verification
 
 Verify incoming webhook signatures using HMAC-SHA256:

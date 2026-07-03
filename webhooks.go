@@ -22,6 +22,17 @@ const (
 	WebhookEventPhoneReleased    WebhookEventType = "phone.released"
 )
 
+// WebhookAuthType is the auth scheme the platform presents to a webhook
+// endpoint, as reported on reads. It never includes the secret itself.
+type WebhookAuthType string
+
+const (
+	WebhookAuthTypeNone         WebhookAuthType = "NONE"
+	WebhookAuthTypeBearer       WebhookAuthType = "BEARER"
+	WebhookAuthTypeBasic        WebhookAuthType = "BASIC"
+	WebhookAuthTypeCustomHeader WebhookAuthType = "CUSTOM_HEADER"
+)
+
 // Webhook represents a webhook configuration.
 type Webhook struct {
 	ID                  string             `json:"id"`
@@ -35,6 +46,59 @@ type Webhook struct {
 	DisabledAt          *string            `json:"disabledAt"`
 	CreatedAt           string             `json:"createdAt"`
 	UpdatedAt           string             `json:"updatedAt"`
+	// AuthType is the auth scheme the platform presents to this endpoint. The
+	// credential itself is write-only and is never returned.
+	AuthType WebhookAuthType `json:"authType"`
+	// AuthHeaderName is the header name for CUSTOM_HEADER auth; nil otherwise.
+	AuthHeaderName *string `json:"authHeaderName"`
+	// RateLimitPerMinute caps deliveries/minute to this endpoint; nil = unlimited.
+	RateLimitPerMinute *int `json:"rateLimitPerMinute"`
+	// MaxAttempts is the max delivery attempts before dead-lettering; nil = default (3).
+	MaxAttempts *int `json:"maxAttempts"`
+}
+
+// WebhookAuthConfig is authentication the platform presents to your endpoint on
+// each delivery, IN ADDITION to the always-on X-Anima-Signature HMAC — a
+// lower-friction option for receivers that prefer a shared secret. Build one
+// with a NewNoAuth / NewBearerAuth / NewBasicAuth / NewCustomHeaderAuth helper.
+// The credential is write-only: it is never returned on reads.
+type WebhookAuthConfig struct {
+	// Type is the auth scheme: "none", "bearer", "basic", or "custom_header".
+	Type string `json:"type"`
+	// Token is the bearer token, for Type "bearer".
+	Token string `json:"token,omitempty"`
+	// Username is the basic-auth username, for Type "basic".
+	Username string `json:"username,omitempty"`
+	// Password is the basic-auth password, for Type "basic".
+	Password string `json:"password,omitempty"`
+	// HeaderName is the custom header name, for Type "custom_header".
+	HeaderName string `json:"headerName,omitempty"`
+	// Value is the custom header value, for Type "custom_header".
+	Value string `json:"value,omitempty"`
+}
+
+// NewNoAuth returns an auth config that sends no customer auth header (the
+// X-Anima-Signature HMAC is still sent). Pass it on Update to remove existing auth.
+func NewNoAuth() *WebhookAuthConfig {
+	return &WebhookAuthConfig{Type: "none"}
+}
+
+// NewBearerAuth returns a bearer-token auth config, sent to your endpoint as
+// "Authorization: Bearer <token>".
+func NewBearerAuth(token string) *WebhookAuthConfig {
+	return &WebhookAuthConfig{Type: "bearer", Token: token}
+}
+
+// NewBasicAuth returns an HTTP basic auth config, sent to your endpoint as
+// "Authorization: Basic <base64(username:password)>".
+func NewBasicAuth(username, password string) *WebhookAuthConfig {
+	return &WebhookAuthConfig{Type: "basic", Username: username, Password: password}
+}
+
+// NewCustomHeaderAuth returns a custom-header auth config, sent to your endpoint
+// as "<headerName>: <value>".
+func NewCustomHeaderAuth(headerName, value string) *WebhookAuthConfig {
+	return &WebhookAuthConfig{Type: "custom_header", HeaderName: headerName, Value: value}
 }
 
 // CreateWebhookParams contains the parameters for creating a webhook.
@@ -43,6 +107,13 @@ type CreateWebhookParams struct {
 	Events      []WebhookEventType `json:"events"`
 	Description string             `json:"description,omitempty"`
 	Active      *bool              `json:"active,omitempty"`
+	// AuthConfig is optional auth the platform presents to your endpoint on each
+	// delivery, in addition to the HMAC signature.
+	AuthConfig *WebhookAuthConfig `json:"authConfig,omitempty"`
+	// RateLimitPerMinute caps deliveries/minute to this endpoint; nil = unlimited.
+	RateLimitPerMinute *int `json:"rateLimitPerMinute,omitempty"`
+	// MaxAttempts is the max delivery attempts before dead-lettering (1-10, default 3).
+	MaxAttempts *int `json:"maxAttempts,omitempty"`
 }
 
 // UpdateWebhookParams contains the parameters for updating a webhook.
@@ -51,6 +122,12 @@ type UpdateWebhookParams struct {
 	Events      []WebhookEventType `json:"events,omitempty"`
 	Description string             `json:"description,omitempty"`
 	Active      *bool              `json:"active,omitempty"`
+	// AuthConfig replaces the endpoint auth; pass NewNoAuth() to remove it.
+	AuthConfig *WebhookAuthConfig `json:"authConfig,omitempty"`
+	// RateLimitPerMinute caps deliveries/minute; nil leaves it unchanged.
+	RateLimitPerMinute *int `json:"rateLimitPerMinute,omitempty"`
+	// MaxAttempts is the max delivery attempts (1-10); nil leaves it unchanged.
+	MaxAttempts *int `json:"maxAttempts,omitempty"`
 }
 
 // WebhookListParams contains parameters for listing webhooks.
