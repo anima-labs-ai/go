@@ -286,6 +286,39 @@ func TestDo_PostWithBody(t *testing.T) {
 	}
 }
 
+// TestDo_PrependsV1Prefix guards the 0.2.0 regression where resource methods
+// sent bare paths (e.g. "/agents") to a server that serves everything under
+// /v1 — producing 404 "Route not found". The version prefix now lives solely
+// in buildURL, so bare paths must arrive on the wire as "/v1/...".
+func TestDo_PrependsV1Prefix(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	type empty struct{}
+
+	hc := &httpClient{apiKey: "k", baseURL: srv.URL, maxRetries: 0, client: srv.Client()}
+	if _, err := Do[empty](context.Background(), hc, "GET", "/agents", nil, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotPath != "/v1/agents" {
+		t.Errorf("bare path must be served under /v1: got %s, want /v1/agents", gotPath)
+	}
+
+	// A trailing slash on a custom base URL must not yield a "//v1" segment.
+	hcSlash := &httpClient{apiKey: "k", baseURL: srv.URL + "/", maxRetries: 0, client: srv.Client()}
+	if _, err := Do[empty](context.Background(), hcSlash, "GET", "/orgs", nil, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotPath != "/v1/orgs" {
+		t.Errorf("trailing-slash base must still map to /v1/orgs, got %s", gotPath)
+	}
+}
+
 func TestBackoff_RespectsRetryAfterHeader(t *testing.T) {
 	hc := &httpClient{}
 	resp := &http.Response{Header: http.Header{}}

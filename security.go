@@ -117,7 +117,7 @@ func (s *SecurityService) ScanContent(ctx context.Context, params SecurityScanPa
 // ListEvents returns a paginated list of security events.
 func (s *SecurityService) ListEvents(ctx context.Context, params SecurityEventsListParams) (*Page[SecurityEvent], error) {
 	q := params.ToQuery()
-	page, err := Do[Page[SecurityEvent]](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/security/events", params.OrgID), nil, q)
+	page, err := Do[Page[SecurityEvent]](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/security/events", params.OrgID), nil, q)
 	if err != nil {
 		return nil, err
 	}

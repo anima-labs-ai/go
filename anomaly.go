@@ -228,7 +228,7 @@ func (s *AnomalyService) ListAlerts(ctx context.Context, orgID string, params *A
 	if params != nil {
 		q = params.ToQuery()
 	}
-	page, err := Do[Page[AnomalyAlert]](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/anomaly/alerts", orgID), nil, q)
+	page, err := Do[Page[AnomalyAlert]](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/anomaly/alerts", orgID), nil, q)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (s *AnomalyService) ListAlertsAutoPaging(orgID string, params *AnomalyAlert
 
 // AcknowledgeAlert acknowledges an anomaly alert.
 func (s *AnomalyService) AcknowledgeAlert(ctx context.Context, orgID, alertID string) (*AnomalyAlert, error) {
-	alert, err := Do[AnomalyAlert](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/anomaly/alerts/%s/acknowledge", orgID, alertID), nil, nil)
+	alert, err := Do[AnomalyAlert](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/anomaly/alerts/%s/acknowledge", orgID, alertID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func (s *AnomalyService) AcknowledgeAlert(ctx context.Context, orgID, alertID st
 
 // ResolveAlert resolves an anomaly alert.
 func (s *AnomalyService) ResolveAlert(ctx context.Context, orgID, alertID string) (*AnomalyAlert, error) {
-	alert, err := Do[AnomalyAlert](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/anomaly/alerts/%s/resolve", orgID, alertID), nil, nil)
+	alert, err := Do[AnomalyAlert](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/anomaly/alerts/%s/resolve", orgID, alertID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (s *AnomalyService) ResolveAlert(ctx context.Context, orgID, alertID string
 
 // MarkFalsePositive marks an anomaly alert as a false positive.
 func (s *AnomalyService) MarkFalsePositive(ctx context.Context, orgID, alertID string) (*AnomalyAlert, error) {
-	alert, err := Do[AnomalyAlert](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/anomaly/alerts/%s/false-positive", orgID, alertID), nil, nil)
+	alert, err := Do[AnomalyAlert](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/anomaly/alerts/%s/false-positive", orgID, alertID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +280,7 @@ func (s *AnomalyService) ListRules(ctx context.Context, orgID string, params *An
 	if params != nil {
 		q = params.ToQuery()
 	}
-	page, err := Do[Page[AnomalyRule]](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/anomaly/rules", orgID), nil, q)
+	page, err := Do[Page[AnomalyRule]](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/anomaly/rules", orgID), nil, q)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +301,7 @@ func (s *AnomalyService) ListRulesAutoPaging(orgID string, params *AnomalyRuleLi
 
 // CreateRule creates a new anomaly detection rule.
 func (s *AnomalyService) CreateRule(ctx context.Context, orgID string, input CreateAnomalyRuleInput) (*AnomalyRule, error) {
-	rule, err := Do[AnomalyRule](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/anomaly/rules", orgID), input, nil)
+	rule, err := Do[AnomalyRule](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/anomaly/rules", orgID), input, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +310,7 @@ func (s *AnomalyService) CreateRule(ctx context.Context, orgID string, input Cre
 
 // UpdateRule updates an existing anomaly detection rule.
 func (s *AnomalyService) UpdateRule(ctx context.Context, orgID, ruleID string, input UpdateAnomalyRuleInput) (*AnomalyRule, error) {
-	rule, err := Do[AnomalyRule](ctx, s.client, http.MethodPatch, fmt.Sprintf("/v1/orgs/%s/anomaly/rules/%s", orgID, ruleID), input, nil)
+	rule, err := Do[AnomalyRule](ctx, s.client, http.MethodPatch, fmt.Sprintf("/orgs/%s/anomaly/rules/%s", orgID, ruleID), input, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -319,13 +319,13 @@ func (s *AnomalyService) UpdateRule(ctx context.Context, orgID, ruleID string, i
 
 // DeleteRule deletes an anomaly detection rule.
 func (s *AnomalyService) DeleteRule(ctx context.Context, orgID, ruleID string) error {
-	_, err := Do[struct{}](ctx, s.client, http.MethodDelete, fmt.Sprintf("/v1/orgs/%s/anomaly/rules/%s", orgID, ruleID), nil, nil)
+	_, err := Do[struct{}](ctx, s.client, http.MethodDelete, fmt.Sprintf("/orgs/%s/anomaly/rules/%s", orgID, ruleID), nil, nil)
 	return err
 }
 
 // GetBaseline retrieves the behavioral baselines for an agent.
 func (s *AnomalyService) GetBaseline(ctx context.Context, orgID, agentID string) (*AgentBaseline, error) {
-	baseline, err := Do[AgentBaseline](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/anomaly/baselines/%s", orgID, agentID), nil, nil)
+	baseline, err := Do[AgentBaseline](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/anomaly/baselines/%s", orgID, agentID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +334,7 @@ func (s *AnomalyService) GetBaseline(ctx context.Context, orgID, agentID string)
 
 // Quarantine sets the quarantine level for an agent.
 func (s *AnomalyService) Quarantine(ctx context.Context, orgID, agentID string, input QuarantineInput) (*QuarantineOutput, error) {
-	result, err := Do[QuarantineOutput](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/anomaly/quarantine/%s", orgID, agentID), input, nil)
+	result, err := Do[QuarantineOutput](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/anomaly/quarantine/%s", orgID, agentID), input, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func (s *AnomalyService) Quarantine(ctx context.Context, orgID, agentID string, 
 
 // ReleaseQuarantine releases an agent from quarantine.
 func (s *AnomalyService) ReleaseQuarantine(ctx context.Context, orgID, agentID string) (*QuarantineOutput, error) {
-	result, err := Do[QuarantineOutput](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/anomaly/quarantine/%s/release", orgID, agentID), nil, nil)
+	result, err := Do[QuarantineOutput](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/anomaly/quarantine/%s/release", orgID, agentID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
