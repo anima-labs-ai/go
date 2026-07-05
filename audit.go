@@ -127,7 +127,7 @@ func (s *AuditService) List(ctx context.Context, orgID string, params *AuditLogL
 	if params != nil {
 		q = params.ToQuery()
 	}
-	page, err := Do[Page[AuditLog]](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/audit/logs", orgID), nil, q)
+	page, err := Do[Page[AuditLog]](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/audit/logs", orgID), nil, q)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (s *AuditService) ListAutoPaging(orgID string, params *AuditLogListParams) 
 
 // Get retrieves a single audit log entry by ID.
 func (s *AuditService) Get(ctx context.Context, orgID, logID string) (*AuditLog, error) {
-	log, err := Do[AuditLog](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/audit/logs/%s", orgID, logID), nil, nil)
+	log, err := Do[AuditLog](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/audit/logs/%s", orgID, logID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (s *AuditService) Get(ctx context.Context, orgID, logID string) (*AuditLog,
 
 // Export initiates an audit log export and returns a download URL.
 func (s *AuditService) Export(ctx context.Context, orgID string, params *AuditLogExportParams) (*AuditLogExportOutput, error) {
-	result, err := Do[AuditLogExportOutput](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/audit/export", orgID), params, nil)
+	result, err := Do[AuditLogExportOutput](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/audit/export", orgID), params, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -237,7 +237,7 @@ func (s *ComplianceService) ListControls(ctx context.Context, orgID string, para
 	if params != nil {
 		q = params.ToQuery()
 	}
-	page, err := Do[Page[ComplianceControl]](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/compliance/controls", orgID), nil, q)
+	page, err := Do[Page[ComplianceControl]](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/compliance/controls", orgID), nil, q)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func (s *ComplianceService) ListControlsAutoPaging(orgID string, params *Complia
 
 // GetControl retrieves a single compliance control by ID.
 func (s *ComplianceService) GetControl(ctx context.Context, orgID, controlID string) (*ComplianceControl, error) {
-	ctrl, err := Do[ComplianceControl](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/compliance/controls/%s", orgID, controlID), nil, nil)
+	ctrl, err := Do[ComplianceControl](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/compliance/controls/%s", orgID, controlID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (s *ComplianceService) GetControl(ctx context.Context, orgID, controlID str
 
 // UpdateControlStatus updates the status and optionally the owner of a compliance control.
 func (s *ComplianceService) UpdateControlStatus(ctx context.Context, orgID, controlID string, input ComplianceControlStatusInput) (*ComplianceControl, error) {
-	ctrl, err := Do[ComplianceControl](ctx, s.client, http.MethodPatch, fmt.Sprintf("/v1/orgs/%s/compliance/controls/%s", orgID, controlID), input, nil)
+	ctrl, err := Do[ComplianceControl](ctx, s.client, http.MethodPatch, fmt.Sprintf("/orgs/%s/compliance/controls/%s", orgID, controlID), input, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func (s *ComplianceService) UpdateControlStatus(ctx context.Context, orgID, cont
 
 // SeedFramework seeds all predefined controls for a compliance framework (e.g. SOC2).
 func (s *ComplianceService) SeedFramework(ctx context.Context, orgID string, input SeedFrameworkInput) (*SeedFrameworkOutput, error) {
-	result, err := Do[SeedFrameworkOutput](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/compliance/seed", orgID), input, nil)
+	result, err := Do[SeedFrameworkOutput](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/compliance/seed", orgID), input, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +285,7 @@ func (s *ComplianceService) SeedFramework(ctx context.Context, orgID string, inp
 
 // GenerateReport generates a new compliance report.
 func (s *ComplianceService) GenerateReport(ctx context.Context, orgID string, input GenerateReportInput) (*ComplianceReport, error) {
-	report, err := Do[ComplianceReport](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/compliance/reports", orgID), input, nil)
+	report, err := Do[ComplianceReport](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/compliance/reports", orgID), input, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +298,7 @@ func (s *ComplianceService) ListReports(ctx context.Context, orgID string, param
 	if params != nil {
 		q = params.ToQuery()
 	}
-	page, err := Do[Page[ComplianceReport]](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/compliance/reports", orgID), nil, q)
+	page, err := Do[Page[ComplianceReport]](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/compliance/reports", orgID), nil, q)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +319,7 @@ func (s *ComplianceService) ListReportsAutoPaging(orgID string, params *Complian
 
 // GetReport retrieves a single compliance report by ID.
 func (s *ComplianceService) GetReport(ctx context.Context, orgID, reportID string) (*ComplianceReport, error) {
-	report, err := Do[ComplianceReport](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/compliance/reports/%s", orgID, reportID), nil, nil)
+	report, err := Do[ComplianceReport](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/compliance/reports/%s", orgID, reportID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +328,7 @@ func (s *ComplianceService) GetReport(ctx context.Context, orgID, reportID strin
 
 // DownloadReport returns a temporary download URL for a compliance report.
 func (s *ComplianceService) DownloadReport(ctx context.Context, orgID, reportID string) (*ComplianceReportDownloadOutput, error) {
-	result, err := Do[ComplianceReportDownloadOutput](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/compliance/reports/%s/download", orgID, reportID), nil, nil)
+	result, err := Do[ComplianceReportDownloadOutput](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/compliance/reports/%s/download", orgID, reportID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +337,7 @@ func (s *ComplianceService) DownloadReport(ctx context.Context, orgID, reportID 
 
 // GetDashboard retrieves the compliance dashboard with summary statistics across all frameworks.
 func (s *ComplianceService) GetDashboard(ctx context.Context, orgID string) (*ComplianceDashboard, error) {
-	dashboard, err := Do[ComplianceDashboard](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/compliance/dashboard", orgID), nil, nil)
+	dashboard, err := Do[ComplianceDashboard](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/compliance/dashboard", orgID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +346,7 @@ func (s *ComplianceService) GetDashboard(ctx context.Context, orgID string) (*Co
 
 // CreateDSAR creates a new Data Subject Access Request.
 func (s *ComplianceService) CreateDSAR(ctx context.Context, orgID string, input CreateDSARInput) (*DataSubjectRequest, error) {
-	dsar, err := Do[DataSubjectRequest](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/compliance/dsars", orgID), input, nil)
+	dsar, err := Do[DataSubjectRequest](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/compliance/dsars", orgID), input, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func (s *ComplianceService) ListDSARs(ctx context.Context, orgID string, params 
 	if params != nil {
 		q = params.ToQuery()
 	}
-	page, err := Do[Page[DataSubjectRequest]](ctx, s.client, http.MethodGet, fmt.Sprintf("/v1/orgs/%s/compliance/dsars", orgID), nil, q)
+	page, err := Do[Page[DataSubjectRequest]](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/compliance/dsars", orgID), nil, q)
 	if err != nil {
 		return nil, err
 	}
@@ -380,7 +380,7 @@ func (s *ComplianceService) ListDSARsAutoPaging(orgID string, params *DSARListPa
 
 // CompleteDSAR marks a Data Subject Access Request as completed.
 func (s *ComplianceService) CompleteDSAR(ctx context.Context, orgID, dsarID string, input *CompleteDSARInput) (*DataSubjectRequest, error) {
-	dsar, err := Do[DataSubjectRequest](ctx, s.client, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/compliance/dsars/%s/complete", orgID, dsarID), input, nil)
+	dsar, err := Do[DataSubjectRequest](ctx, s.client, http.MethodPost, fmt.Sprintf("/orgs/%s/compliance/dsars/%s/complete", orgID, dsarID), input, nil)
 	if err != nil {
 		return nil, err
 	}

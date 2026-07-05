@@ -182,12 +182,25 @@ func (hc *httpClient) sleep(ctx context.Context, d time.Duration) {
 	}
 }
 
-// buildURL constructs the full request URL.
+// apiVersionPrefix is prepended to every REST path. The Anima API serves all
+// routes under /v1, and — mirroring the server, where the prefix is applied
+// once at mount time and contract paths are bare — the SDK keeps the version
+// in exactly one place, here. Resource methods therefore pass BARE paths
+// (e.g. "/agents", "/phone/provision"); they must NOT hardcode "/v1".
+const apiVersionPrefix = "/v1"
+
+// buildURL constructs the full request URL: baseURL + /v1 + path.
 func (hc *httpClient) buildURL(path string, query url.Values) (string, error) {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	u, err := url.Parse(hc.baseURL + path)
+	// Normalize the base to an origin: trim a trailing slash (so a custom
+	// baseURL like "https://api.useanima.sh/" doesn't yield "//v1"), then drop a
+	// redundant trailing "/v1" — e.g. a caller who pasted the API banner's
+	// "https://api.useanima.sh/v1". The SDK owns the version prefix, so leaving
+	// it on the base would double-prefix to "/v1/v1" and 404.
+	base := strings.TrimSuffix(strings.TrimRight(hc.baseURL, "/"), apiVersionPrefix)
+	u, err := url.Parse(base + apiVersionPrefix + path)
 	if err != nil {
 		return "", err
 	}

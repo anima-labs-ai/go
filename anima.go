@@ -28,7 +28,7 @@ const (
 	// DefaultMaxRetries is the default number of retries for failed requests.
 	DefaultMaxRetries = 3
 	// SDKVersion is the current version of this SDK.
-	SDKVersion = "0.1.0"
+	SDKVersion = "0.2.1"
 )
 
 // Client is the Anima API client. Create one with NewClient.
