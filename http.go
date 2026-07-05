@@ -194,9 +194,12 @@ func (hc *httpClient) buildURL(path string, query url.Values) (string, error) {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	// Trim any trailing slash on the base so a custom baseURL like
-	// "https://api.useanima.sh/" doesn't yield a "//v1" path segment.
-	base := strings.TrimRight(hc.baseURL, "/")
+	// Normalize the base to an origin: trim a trailing slash (so a custom
+	// baseURL like "https://api.useanima.sh/" doesn't yield "//v1"), then drop a
+	// redundant trailing "/v1" — e.g. a caller who pasted the API banner's
+	// "https://api.useanima.sh/v1". The SDK owns the version prefix, so leaving
+	// it on the base would double-prefix to "/v1/v1" and 404.
+	base := strings.TrimSuffix(strings.TrimRight(hc.baseURL, "/"), apiVersionPrefix)
 	u, err := url.Parse(base + apiVersionPrefix + path)
 	if err != nil {
 		return "", err

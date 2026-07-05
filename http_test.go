@@ -317,6 +317,16 @@ func TestDo_PrependsV1Prefix(t *testing.T) {
 	if gotPath != "/v1/orgs" {
 		t.Errorf("trailing-slash base must still map to /v1/orgs, got %s", gotPath)
 	}
+
+	// A base URL that already includes the version prefix (e.g. the API banner's
+	// "https://api.useanima.sh/v1") must not double-prefix to "/v1/v1".
+	hcV1 := &httpClient{apiKey: "k", baseURL: srv.URL + "/v1", maxRetries: 0, client: srv.Client()}
+	if _, err := Do[empty](context.Background(), hcV1, "GET", "/agents", nil, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotPath != "/v1/agents" {
+		t.Errorf("base already ending in /v1 must not double-prefix: got %s, want /v1/agents", gotPath)
+	}
 }
 
 func TestBackoff_RespectsRetryAfterHeader(t *testing.T) {
