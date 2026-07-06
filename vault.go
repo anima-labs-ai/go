@@ -99,6 +99,12 @@ type CreateVaultCredentialParams struct {
 	Identity *VaultIdentityData `json:"identity,omitempty"`
 	Fields   []VaultCustomField `json:"fields,omitempty"`
 	Favorite bool               `json:"favorite,omitempty"`
+	// GeneratePassword asks the vault to generate the login password
+	// server-side (login type only, mutually exclusive with
+	// Login.Password). Defaults: 24 characters, all character classes.
+	// The password is stored in the vault and never returned — the
+	// response carries only the masked credential.
+	GeneratePassword *GeneratePasswordParams `json:"generatePassword,omitempty"`
 }
 
 // UpdateVaultCredentialParams contains the parameters for updating a credential.

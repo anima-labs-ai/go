@@ -255,3 +255,75 @@ func TestVaultService_RevokeTokens(t *testing.T) {
 		t.Errorf("expected 3 revoked, got %d", result.Revoked)
 	}
 }
+
+func TestVaultService_CreateCredential_GeneratePassword(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/vault/credentials", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+
+		// Decode into a raw map so "password key absent" is testable —
+		// a struct decode cannot distinguish absent from empty.
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode body: %v", err)
+		}
+
+		gen, ok := body["generatePassword"].(map[string]any)
+		if !ok {
+			t.Fatalf("expected generatePassword object, got %v", body["generatePassword"])
+		}
+		if gen["length"] != float64(32) {
+			t.Errorf("expected length 32, got %v", gen["length"])
+		}
+		if gen["special"] != false {
+			t.Errorf("expected special false, got %v", gen["special"])
+		}
+
+		login, ok := body["login"].(map[string]any)
+		if !ok {
+			t.Fatalf("expected login object, got %v", body["login"])
+		}
+		if _, present := login["password"]; present {
+			t.Error("expected no password in request body when generatePassword is set")
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(VaultCredential{
+			ID:   "cred_gen",
+			Type: CredentialTypeLogin,
+			Name: "Acme Portal",
+			Login: &VaultLoginData{
+				Username: "bot@acme.io",
+				Password: "****",
+			},
+			CreatedAt: "2025-01-01T00:00:00Z",
+			UpdatedAt: "2025-01-01T00:00:00Z",
+		})
+	})
+
+	client, ts := newTestClient(mux)
+	defer ts.Close()
+
+	special := false
+	cred, err := client.Vault.CreateCredential(context.Background(), CreateVaultCredentialParams{
+		AgentID: "agent_001",
+		Type:    CredentialTypeLogin,
+		Name:    "Acme Portal",
+		Login:   &VaultLoginData{Username: "bot@acme.io"},
+		GeneratePassword: &GeneratePasswordParams{
+			Length:  32,
+			Special: &special,
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cred.ID != "cred_gen" {
+		t.Errorf("expected ID 'cred_gen', got %q", cred.ID)
+	}
+	if cred.Login == nil || cred.Login.Password != "****" {
+		t.Error("expected masked password in response")
+	}
+}

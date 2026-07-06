@@ -267,6 +267,19 @@ cred, err := client.Vault.CreateCredential(ctx, anima.CreateVaultCredentialParam
         Password: "s3cr3t",
     },
 })
+
+// Or have the vault generate the password server-side — it is stored
+// with the credential and never returned; the response carries only the
+// masked credential ref. (Defaults: 24 chars, all character classes.)
+cred, err = client.Vault.CreateCredential(ctx, anima.CreateVaultCredentialParams{
+    AgentID: "agent_123",
+    Type:    anima.CredentialTypeLogin,
+    Name:    "Acme Portal",
+    Login: &anima.VaultLoginData{
+        Username: "bot@company.com",
+    },
+    GeneratePassword: &anima.GeneratePasswordParams{Length: 32},
+})
 ```
 
 ### Audit Logs
