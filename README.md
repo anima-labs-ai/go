@@ -5,7 +5,7 @@ Official Go client library for the [Anima](https://useanima.sh) API.
 ## Installation
 
 ```bash
-go get github.com/anima-labs/anima-go
+go get github.com/anima-labs-ai/go
 ```
 
 Requires Go 1.22 or later.
@@ -20,7 +20,7 @@ import (
     "fmt"
     "log"
 
-    anima "github.com/anima-labs/anima-go"
+    anima "github.com/anima-labs-ai/go"
 )
 
 func main() {
