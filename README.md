@@ -5,7 +5,7 @@ Official Go client library for the [Anima](https://useanima.sh) API.
 ## Installation
 
 ```bash
-go get github.com/anima-labs/anima-go
+go get github.com/anima-labs-ai/go
 ```
 
 Requires Go 1.22 or later.
@@ -20,7 +20,7 @@ import (
     "fmt"
     "log"
 
-    anima "github.com/anima-labs/anima-go"
+    anima "github.com/anima-labs-ai/go"
 )
 
 func main() {
@@ -143,6 +143,7 @@ All resource services are available as fields on the `Client`:
 | `client.Compliance` | Controls, reports, dashboard, DSARs (SOC2/GDPR/PCI) |
 | `client.Domains` | Add/verify domains, DNS records, deliverability stats |
 | `client.Emails` | List emails, manage attachments |
+| `client.Extension` | Connect a browser extension to an agent for headless sessions |
 | `client.Identity` | DID documents, key rotation, verifiable credentials, agent cards |
 | `client.Messages` | Send email/SMS, list and search messages |
 | `client.Organizations` | Manage organizations and master keys |
@@ -164,6 +165,25 @@ msg, err := client.Messages.SendEmail(ctx, anima.SendEmailParams{
     Body:    "Plain text body",
     BodyHTML: "<h1>Hello</h1>",
 })
+```
+
+### Extension Connect
+
+```go
+// Master key: pass the agent to connect as.
+res, err := client.Extension.Connect(ctx, anima.ConnectExtensionParams{
+    AgentID: "agent_123",
+    TTL:     "1h", // "15m", "1h", or "session"
+})
+fmt.Printf("Open to connect: %s\n", res.ConnectURL)
+
+// Agent key: omit AgentID — the key already identifies the agent.
+res, err = client.Extension.Connect(ctx, anima.ConnectExtensionParams{
+    TTL: "session",
+})
+if res.ExpiresAt != nil {
+    fmt.Printf("Connection expires at %s\n", *res.ExpiresAt)
+}
 ```
 
 ### Agent Identity (DID)
