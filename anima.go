@@ -53,6 +53,8 @@ type Client struct {
 	Domains *DomainsService
 	// Emails provides methods for listing emails and managing attachments.
 	Emails *EmailsService
+	// Extension provides methods for connecting browser extensions to an agent.
+	Extension *ExtensionService
 	// Identity provides methods for managing agent decentralized identity (DID).
 	Identity *IdentityService
 	// Messages provides methods for sending and listing messages.
@@ -148,6 +150,7 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		Compliance:    newComplianceService(internal),
 		Domains:       newDomainsService(internal),
 		Emails:        newEmailsService(internal),
+		Extension:     newExtensionService(internal),
 		Identity:      newIdentityService(internal),
 		Messages:      newMessagesService(internal),
 		Organizations: newOrganizationsService(internal),
