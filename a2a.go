@@ -2,20 +2,22 @@ package anima
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // A2ATaskStatus represents the status of an A2A task.
 type A2ATaskStatus string
 
 const (
-	A2ATaskStatusPending    A2ATaskStatus = "pending"
-	A2ATaskStatusRunning    A2ATaskStatus = "running"
-	A2ATaskStatusCompleted  A2ATaskStatus = "completed"
-	A2ATaskStatusFailed     A2ATaskStatus = "failed"
-	A2ATaskStatusCancelled  A2ATaskStatus = "cancelled"
+	A2ATaskStatusPending   A2ATaskStatus = "pending"
+	A2ATaskStatusRunning   A2ATaskStatus = "running"
+	A2ATaskStatusCompleted A2ATaskStatus = "completed"
+	A2ATaskStatusFailed    A2ATaskStatus = "failed"
+	A2ATaskStatusCancelled A2ATaskStatus = "cancelled"
 )
 
 // A2ATask represents an agent-to-agent task.
@@ -118,4 +120,47 @@ func (s *A2AService) CancelTask(ctx context.Context, agentID string, taskID stri
 		return nil, err
 	}
 	return &task, nil
+}
+
+// DispatchA2ATaskParams contains parameters for dispatching an A2A task to another agent.
+type DispatchA2ATaskParams struct {
+	ToDID string `json:"toDid"`
+	Type  string `json:"type"`
+	Input any    `json:"input"`
+}
+
+// Dispatch sends an A2A task from one of your agents to another agent by DID.
+func (s *A2AService) Dispatch(ctx context.Context, fromAgentID string, params DispatchA2ATaskParams) (*A2ATask, error) {
+	body := struct {
+		FromAgentID string `json:"fromAgentId"`
+		DispatchA2ATaskParams
+	}{FromAgentID: fromAgentID, DispatchA2ATaskParams: params}
+	task, err := Do[A2ATask](ctx, s.client, http.MethodPost, fmt.Sprintf("/agents/%s/a2a/dispatch", fromAgentID), body, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
+}
+
+// Discover fetches an agent's Agent Card from its public well-known URL.
+// Raw unauthenticated GET (no /v1, no Authorization) to a foreign host.
+func (s *A2AService) Discover(ctx context.Context, agentURL string) (map[string]any, error) {
+	u := strings.TrimRight(agentURL, "/") + "/.well-known/agent.json"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, newNetworkError(fmt.Sprintf("invalid URL: %v", err))
+	}
+	resp, err := s.client.client.Do(req)
+	if err != nil {
+		return nil, newNetworkError(err.Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, newNetworkError(fmt.Sprintf("discover failed: %d", resp.StatusCode))
+	}
+	var card map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&card); err != nil {
+		return nil, newNetworkError(err.Error())
+	}
+	return card, nil
 }
