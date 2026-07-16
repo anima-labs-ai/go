@@ -59,7 +59,7 @@ func Do[T any](ctx context.Context, hc *httpClient, method, path string, body an
 	if body != nil {
 		encoded, encErr := json.Marshal(body)
 		if encErr != nil {
-			return zero, newValidationError(fmt.Sprintf("failed to encode request body: %v", encErr), nil)
+			return zero, newValidationError(400, fmt.Sprintf("failed to encode request body: %v", encErr), nil)
 		}
 		bodyReader = func() (io.Reader, error) {
 			return bytes.NewReader(encoded), nil
@@ -240,9 +240,9 @@ func (hc *httpClient) parseError(resp *http.Response) *APIError {
 
 	switch resp.StatusCode {
 	case 400, 422:
-		return newValidationError(message, details)
+		return newValidationError(resp.StatusCode, message, details)
 	case 401, 403:
-		return newAuthError(message, details)
+		return newAuthError(resp.StatusCode, message, details)
 	case 404:
 		return newNotFoundError(message, details)
 	case 409:

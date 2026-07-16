@@ -29,10 +29,10 @@ func TestAPIError_Is(t *testing.T) {
 		target   error
 		wantIs   bool
 	}{
-		{"auth error matches ErrAuthentication", newAuthError("bad", nil), ErrAuthentication, true},
-		{"auth error does not match ErrNotFound", newAuthError("bad", nil), ErrNotFound, false},
+		{"auth error matches ErrAuthentication", newAuthError(401, "bad", nil), ErrAuthentication, true},
+		{"auth error does not match ErrNotFound", newAuthError(401, "bad", nil), ErrNotFound, false},
 		{"not found matches ErrNotFound", newNotFoundError("gone", nil), ErrNotFound, true},
-		{"validation matches ErrValidation", newValidationError("bad input", nil), ErrValidation, true},
+		{"validation matches ErrValidation", newValidationError(400, "bad input", nil), ErrValidation, true},
 		{"rate limit matches ErrRateLimit", newRateLimitError("slow down", 30, nil), ErrRateLimit, true},
 		{"conflict matches ErrConflict", newConflictError("dup", nil), ErrConflict, true},
 		{"internal server matches ErrInternalServer", newInternalServerError("boom", 502, nil), ErrInternalServer, true},

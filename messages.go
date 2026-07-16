@@ -184,6 +184,39 @@ type MessageSearchParams struct {
 	Pagination *ListParams           `json:"pagination,omitempty"`
 }
 
+// SemanticSearchParams contains parameters for semantic (meaning-based)
+// message search. Query is required; the other fields are optional.
+type SemanticSearchParams struct {
+	// Query is a natural-language description of what to find (1-1000 chars).
+	Query string `json:"query"`
+	// AgentID filters results to a specific agent.
+	AgentID string `json:"agentId,omitempty"`
+	// Limit is the maximum number of results (1-50, server default 10).
+	Limit int `json:"limit,omitempty"`
+	// Threshold is the minimum cosine-similarity score (0-1, server default
+	// 0.7). It is a pointer so an explicit 0 ("return everything") is
+	// distinguishable from unset.
+	Threshold *float64 `json:"threshold,omitempty"`
+}
+
+// SemanticSearchResult is a single message matched by semantic search.
+type SemanticSearchResult struct {
+	ID string `json:"id"`
+	// Content is the message content text.
+	Content string `json:"content"`
+	// Similarity is the cosine similarity score between 0 and 1.
+	Similarity float64          `json:"similarity"`
+	Channel    MessageChannel   `json:"channel"`
+	Direction  MessageDirection `json:"direction"`
+	CreatedAt  string           `json:"createdAt"`
+	AgentID    string           `json:"agentId"`
+}
+
+// SemanticSearchResults contains messages ranked by semantic similarity.
+type SemanticSearchResults struct {
+	Results []SemanticSearchResult `json:"results"`
+}
+
 // MessagesService provides methods for sending and managing messages.
 type MessagesService struct {
 	client *httpClient
@@ -253,4 +286,19 @@ func (s *MessagesService) Search(ctx context.Context, params MessageSearchParams
 		return nil, err
 	}
 	return &page, nil
+}
+
+// SemanticSearch searches messages by meaning rather than keywords, using
+// vector embeddings server-side. Results are ranked by cosine similarity.
+//
+// An empty Results slice means nothing matched above the threshold — it is
+// not an error. An embedding-provider outage surfaces as an *APIError with
+// a 5xx status (matching ErrInternalServer), so callers can distinguish
+// "no results" from "search unavailable".
+func (s *MessagesService) SemanticSearch(ctx context.Context, params SemanticSearchParams) (*SemanticSearchResults, error) {
+	res, err := Do[SemanticSearchResults](ctx, s.client, http.MethodPost, "/messages/search/semantic", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
 }
