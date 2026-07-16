@@ -145,6 +145,7 @@ All resource services are available as fields on the `Client`:
 | `client.Emails` | List emails, manage attachments |
 | `client.Extension` | Connect a browser extension to an agent for headless sessions |
 | `client.Identity` | DID documents, key rotation, verifiable credentials, agent cards |
+| `client.Inboxes` | Create, get, list, update, delete email inboxes |
 | `client.Messages` | Send email/SMS, list and search messages |
 | `client.Organizations` | Manage organizations and master keys |
 | `client.Phones` | Provision/release phone numbers |
@@ -165,6 +166,42 @@ msg, err := client.Messages.SendEmail(ctx, anima.SendEmailParams{
     Body:    "Plain text body",
     BodyHTML: "<h1>Hello</h1>",
 })
+```
+
+With attachments and reply threading — each attachment provides either
+base64 `Content` or a public `URL` (max 20 attachments, 25MB total):
+
+```go
+msg, err := client.Messages.SendEmail(ctx, anima.SendEmailParams{
+    AgentID: "agent_123",
+    To:      []string{"user@example.com"},
+    Subject: "Re: Hello",
+    Body:    "Reply with the report attached",
+    Attachments: []anima.EmailAttachment{
+        {Filename: "report.pdf", ContentType: "application/pdf", Content: base64Bytes},
+        {URL: "https://example.com/logo.png"},
+    },
+    InReplyTo:  "<msg-1@agents.useanima.sh>",
+    References: []string{"<msg-0@agents.useanima.sh>", "<msg-1@agents.useanima.sh>"},
+})
+```
+
+### Inboxes
+
+```go
+// Create an inbox (all fields optional — the server generates an address).
+inbox, err := client.Inboxes.Create(ctx, anima.CreateInboxParams{
+    Username:    "support",
+    DisplayName: "Support Inbox",
+    AgentID:     "agent_123",
+})
+
+// Get, list, update, delete.
+inbox, err = client.Inboxes.Get(ctx, inbox.ID)
+page, err := client.Inboxes.List(ctx, &anima.InboxListParams{Query: "support"})
+name := "Support (EU)"
+inbox, err = client.Inboxes.Update(ctx, inbox.ID, anima.UpdateInboxParams{DisplayName: &name})
+err = client.Inboxes.Delete(ctx, inbox.ID)
 ```
 
 ### Extension Connect

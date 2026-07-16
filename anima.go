@@ -57,6 +57,8 @@ type Client struct {
 	Extension *ExtensionService
 	// Identity provides methods for managing agent decentralized identity (DID).
 	Identity *IdentityService
+	// Inboxes provides methods for managing email inboxes.
+	Inboxes *InboxesService
 	// Messages provides methods for sending and listing messages.
 	Messages *MessagesService
 	// Organizations provides methods for managing organizations.
@@ -152,6 +154,7 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		Emails:        newEmailsService(internal),
 		Extension:     newExtensionService(internal),
 		Identity:      newIdentityService(internal),
+		Inboxes:       newInboxesService(internal),
 		Messages:      newMessagesService(internal),
 		Organizations: newOrganizationsService(internal),
 		Phones:        newPhonesService(internal),

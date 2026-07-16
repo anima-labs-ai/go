@@ -73,17 +73,48 @@ type Message struct {
 	UpdatedAt   string                 `json:"updatedAt"`
 }
 
+// EmailAttachment is a file attachment for an outbound email. Provide exactly
+// one of Content (base64-encoded bytes inline in the request) or URL (the
+// server fetches the file). The total size cap is 25MB per email across all
+// attachments; max 20 attachments per email.
+type EmailAttachment struct {
+	// Filename presented to the recipient. Inferred from the URL path when URL
+	// is used and this is omitted; falls back to "attachment" when neither is
+	// available.
+	Filename string `json:"filename,omitempty"`
+	// ContentID makes the attachment inline, for images referenced in the HTML
+	// body via cid: URIs (e.g. set to "logo" to be referenced as
+	// <img src="cid:logo">). When empty the attachment is a regular download.
+	ContentID string `json:"contentId,omitempty"`
+	// ContentType is the MIME type. Auto-detected from the Filename extension
+	// if omitted.
+	ContentType string `json:"contentType,omitempty"`
+	// Content is the base64-encoded attachment bytes. Provide either Content
+	// or URL, not both.
+	Content string `json:"content,omitempty"`
+	// URL is a public URL the server fetches and attaches. Provide either
+	// Content or URL, not both.
+	URL string `json:"url,omitempty"`
+}
+
 // SendEmailParams contains the parameters for sending an email.
 type SendEmailParams struct {
-	AgentID  string                 `json:"agentId"`
-	To       []string               `json:"to"`
-	CC       []string               `json:"cc,omitempty"`
-	BCC      []string               `json:"bcc,omitempty"`
-	Subject  string                 `json:"subject"`
-	Body     string                 `json:"body"`
-	BodyHTML string                 `json:"bodyHtml,omitempty"`
-	Headers  map[string]string      `json:"headers,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	AgentID  string   `json:"agentId"`
+	To       []string `json:"to"`
+	CC       []string `json:"cc,omitempty"`
+	BCC      []string `json:"bcc,omitempty"`
+	Subject  string   `json:"subject"`
+	Body     string   `json:"body"`
+	BodyHTML string   `json:"bodyHtml,omitempty"`
+	// Attachments are optional file attachments (max 20, 25MB total).
+	Attachments []EmailAttachment `json:"attachments,omitempty"`
+	// InReplyTo is the Message-ID of the email this is replying to, used for
+	// threading.
+	InReplyTo string `json:"inReplyTo,omitempty"`
+	// References is the list of Message-IDs forming the email thread chain.
+	References []string               `json:"references,omitempty"`
+	Headers    map[string]string      `json:"headers,omitempty"`
+	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // SendSMSParams contains the parameters for sending an SMS.

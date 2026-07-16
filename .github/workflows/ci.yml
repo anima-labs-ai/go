@@ -19,6 +19,18 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
+      # The 2026 rebrand find-replace (anima.email -> useanima.sh) once mangled
+      # the code identifier `anima.emails.*` into the nonsense token
+      # `useanima[.]shs.*` (dot, no brackets). Fail fast if that token ever
+      # reappears. The [.] bracket notation keeps this file from matching
+      # its own grep pattern.
+      - name: Lint for rebrand-mangle token
+        run: |
+          if grep -rn --exclude-dir=.git "useanima[.]shs" .; then
+            echo "::error::Found the rebrand-mangle token 'useanima[.]shs' (dot for [.]) — a broken anima.email -> useanima.sh find-replace artifact. Restore the original anima.emails.* identifier before merging."
+            exit 1
+          fi
+
       - name: Vet
         run: go vet ./...
 
