@@ -285,6 +285,9 @@ func TestNewClient_ServicesWired(t *testing.T) {
 	if client.Emails == nil {
 		t.Error("Emails service is nil")
 	}
+	if client.Inboxes == nil {
+		t.Error("Inboxes service is nil")
+	}
 	if client.Messages == nil {
 		t.Error("Messages service is nil")
 	}
