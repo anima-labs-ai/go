@@ -387,3 +387,146 @@ func TestMessagesService_Search(t *testing.T) {
 		t.Errorf("expected single hit 'msg_hit', got %v", page.Items)
 	}
 }
+
+func TestMessagesService_SemanticSearch(t *testing.T) {
+	threshold := 0.5
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/messages/search/semantic", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+
+		body := decodeRawBody(t, r)
+		if body["query"] != "emails about the delayed shipment" {
+			t.Errorf("expected natural-language query, got %v", body["query"])
+		}
+		if body["agentId"] != "agent_123" {
+			t.Errorf("expected agentId 'agent_123', got %v", body["agentId"])
+		}
+		if body["limit"] != float64(5) {
+			t.Errorf("expected limit 5, got %v", body["limit"])
+		}
+		if body["threshold"] != 0.5 {
+			t.Errorf("expected threshold 0.5, got %v", body["threshold"])
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"results": []map[string]interface{}{
+				{
+					"id":         "msg_1",
+					"content":    "Your shipment is delayed by two weeks",
+					"similarity": 0.91,
+					"channel":    "EMAIL",
+					"direction":  "INBOUND",
+					"createdAt":  "2026-07-17T10:00:00Z",
+					"agentId":    "agent_123",
+				},
+			},
+		})
+	})
+
+	client, ts := newTestClient(mux)
+	defer ts.Close()
+
+	res, err := client.Messages.SemanticSearch(context.Background(), SemanticSearchParams{
+		Query:     "emails about the delayed shipment",
+		AgentID:   "agent_123",
+		Limit:     5,
+		Threshold: &threshold,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(res.Results))
+	}
+	hit := res.Results[0]
+	if hit.ID != "msg_1" {
+		t.Errorf("expected result ID 'msg_1', got %q", hit.ID)
+	}
+	// Similarity is the ranking signal — it must survive the round trip, not
+	// be dropped by a lossy struct.
+	if hit.Similarity != 0.91 {
+		t.Errorf("expected similarity 0.91, got %v", hit.Similarity)
+	}
+	if hit.Channel != MessageChannelEmail {
+		t.Errorf("expected channel EMAIL, got %q", hit.Channel)
+	}
+}
+
+// TestMessagesService_SemanticSearch_DefaultsOmitted asserts that unset
+// optional params are omitted from the wire so the server's documented
+// defaults (limit 10, threshold 0.7) apply — sending zero values instead
+// would fail validation (limit min 1) or return everything (threshold 0).
+func TestMessagesService_SemanticSearch_DefaultsOmitted(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/messages/search/semantic", func(w http.ResponseWriter, r *http.Request) {
+		body := decodeRawBody(t, r)
+		if body["query"] != "anything" {
+			t.Errorf("expected query 'anything', got %v", body["query"])
+		}
+		for _, key := range []string{"agentId", "limit", "threshold"} {
+			if _, present := body[key]; present {
+				t.Errorf("expected %q to be omitted when unset, but it was present", key)
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"results": []interface{}{}})
+	})
+
+	client, ts := newTestClient(mux)
+	defer ts.Close()
+
+	// No results is a valid outcome, not an error — callers must be able to
+	// distinguish "nothing matched" from "search unavailable" (below).
+	res, err := client.Messages.SemanticSearch(context.Background(), SemanticSearchParams{
+		Query: "anything",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Results) != 0 {
+		t.Errorf("expected 0 results, got %d", len(res.Results))
+	}
+}
+
+// TestMessagesService_SemanticSearch_ProviderOutage asserts that an
+// embedding-provider outage surfaces as a loud 5xx error, NOT as an empty
+// result set — silently returning [] on outage is exactly the failure mode
+// this endpoint used to have server-side.
+func TestMessagesService_SemanticSearch_ProviderOutage(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/messages/search/semantic", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": map[string]interface{}{
+				"message": "Embedding provider unavailable",
+				"code":    "SERVICE_UNAVAILABLE",
+			},
+		})
+	})
+
+	client, ts := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.Messages.SemanticSearch(context.Background(), SemanticSearchParams{
+		Query: "anything",
+	})
+	if err == nil {
+		t.Fatal("expected an error on provider outage, got nil")
+	}
+	if !errors.Is(err, ErrInternalServer) {
+		t.Errorf("expected ErrInternalServer, got %v", err)
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T", err)
+	}
+	if apiErr.Status != http.StatusServiceUnavailable {
+		t.Errorf("expected status 503, got %d", apiErr.Status)
+	}
+}

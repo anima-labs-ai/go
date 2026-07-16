@@ -94,17 +94,17 @@ func ConstructWebhookEvent(payload []byte, signatureHeader, secret string, opts 
 
 	var raw map[string]any
 	if err := json.Unmarshal(payload, &raw); err != nil {
-		return nil, newValidationError("invalid webhook payload format", nil)
+		return nil, newValidationError(400, "invalid webhook payload format", nil)
 	}
 
 	eventType, ok := raw["type"].(string)
 	if !ok || eventType == "" {
-		return nil, newValidationError("webhook payload missing event type", nil)
+		return nil, newValidationError(400, "webhook payload missing event type", nil)
 	}
 
 	data, ok := raw["data"].(map[string]any)
 	if !ok {
-		return nil, newValidationError("webhook payload missing data object", nil)
+		return nil, newValidationError(400, "webhook payload missing data object", nil)
 	}
 
 	event := &WebhookEvent{

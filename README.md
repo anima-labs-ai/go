@@ -142,11 +142,12 @@ All resource services are available as fields on the `Client`:
 | `client.Audit` | Immutable audit logs: list, get, export (CSV/JSON) |
 | `client.Compliance` | Controls, reports, dashboard, DSARs (SOC2/GDPR/PCI) |
 | `client.Domains` | Add/verify domains, DNS records, deliverability stats |
+| `client.Drafts` | Email drafts: create, get, list, send, delete |
 | `client.Emails` | List emails, manage attachments |
 | `client.Extension` | Connect a browser extension to an agent for headless sessions |
 | `client.Identity` | DID documents, key rotation, verifiable credentials, agent cards |
 | `client.Inboxes` | Create, get, list, update, delete email inboxes |
-| `client.Messages` | Send email/SMS, list and search messages |
+| `client.Messages` | Send email/SMS, list and search messages (full-text + semantic) |
 | `client.Organizations` | Manage organizations and master keys |
 | `client.Phones` | Provision/release phone numbers |
 | `client.Pods` | Compute pods: create, list, update, delete, usage stats |
@@ -184,6 +185,47 @@ msg, err := client.Messages.SendEmail(ctx, anima.SendEmailParams{
     InReplyTo:  "<msg-1@agents.useanima.sh>",
     References: []string{"<msg-0@agents.useanima.sh>", "<msg-1@agents.useanima.sh>"},
 })
+```
+
+### Email Drafts
+
+Drafts are composed-but-not-sent emails. They may be created incomplete;
+`Send` converts a draft into a real `Message` (full email-send semantics:
+threading, scanning, plan limits) and deletes the draft atomically.
+
+```go
+draft, err := client.Drafts.Create(ctx, anima.CreateDraftParams{
+    AgentID: "agent_123",
+    To:      []string{"user@example.com"},
+    Subject: "Quarterly report",
+    Body:    "Draft body — review before sending",
+})
+
+// Get, list, delete.
+draft, err = client.Drafts.Get(ctx, draft.ID)
+page, err := client.Drafts.List(ctx, &anima.DraftListParams{AgentID: "agent_123"})
+deleted, err := client.Drafts.Delete(ctx, draft.ID)
+
+// Send: returns the new Message; the draft id 404s afterwards.
+msg, err := client.Drafts.Send(ctx, draft.ID)
+```
+
+### Semantic Search
+
+Search messages by meaning rather than keywords (vector embeddings,
+ranked by cosine similarity). An empty `Results` slice means nothing
+matched — an embedding-provider outage surfaces as a 5xx `*APIError`
+instead, so "no results" and "search unavailable" are distinguishable.
+
+```go
+res, err := client.Messages.SemanticSearch(ctx, anima.SemanticSearchParams{
+    Query:   "emails about the delayed shipment",
+    AgentID: "agent_123", // optional
+    Limit:   5,           // optional, server default 10
+})
+for _, hit := range res.Results {
+    fmt.Printf("%.2f %s\n", hit.Similarity, hit.Content)
+}
 ```
 
 ### Inboxes
@@ -233,6 +275,16 @@ fmt.Printf("DID: %s\n", did.ID)
 // Verify a credential.
 result, err := client.Identity.VerifyCredential(ctx, "eyJhbGciOi...")
 fmt.Printf("Valid: %v\n", result.Valid)
+
+// Verifiable credentials: list, issue (master key, org-attestation types
+// only — platform-reserved types are auto-issued on verification events),
+// and revoke.
+creds, err := client.Identity.ListCredentials(ctx, "agent_123")
+vc, err := client.Identity.IssueCredential(ctx, "agent_123", anima.IssueCredentialParams{
+    Type:   anima.VCTypeAddressVerified,
+    Claims: map[string]interface{}{"country": "BG"},
+})
+vc, err = client.Identity.RevokeCredential(ctx, "agent_123", vc.ID)
 ```
 
 ### Agent Registry

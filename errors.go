@@ -65,16 +65,20 @@ func newAPIError(sentinel error, status int, code, message string, details any) 
 
 // Typed constructors for specific error categories.
 
-func newAuthError(message string, details any) *APIError {
-	return newAPIError(ErrAuthentication, 401, "AUTH_ERROR", message, details)
+// newAuthError wraps a 401 (unauthenticated) or 403 (forbidden) response.
+// Status carries the real HTTP status so callers can tell the two apart.
+func newAuthError(status int, message string, details any) *APIError {
+	return newAPIError(ErrAuthentication, status, "AUTH_ERROR", message, details)
 }
 
 func newNotFoundError(message string, details any) *APIError {
 	return newAPIError(ErrNotFound, 404, "NOT_FOUND", message, details)
 }
 
-func newValidationError(message string, details any) *APIError {
-	return newAPIError(ErrValidation, 400, "VALIDATION_ERROR", message, details)
+// newValidationError wraps a 400 or 422 response (or a client-side
+// validation failure, reported as 400).
+func newValidationError(status int, message string, details any) *APIError {
+	return newAPIError(ErrValidation, status, "VALIDATION_ERROR", message, details)
 }
 
 func newRateLimitError(message string, retryAfter int, details any) *APIError {

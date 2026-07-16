@@ -43,21 +43,64 @@ type DidRotateOutput struct {
 	Rotated  bool        `json:"rotated"`
 }
 
-// VerifiableCredential represents a W3C Verifiable Credential.
+// VCType is a type of verifiable credential Anima issues. (Distinct from
+// CredentialType, which is a vault credential kind.)
+type VCType string
+
+const (
+	// Platform-issued automatically on verification events; requesting these
+	// via IssueCredential returns a 403.
+	VCTypeEmailVerified  VCType = "AnimaEmailVerified"
+	VCTypePhoneVerified  VCType = "AnimaPhoneVerified"
+	VCTypeKYBCompleted   VCType = "AnimaKYBCompleted"
+	VCTypePaymentCapable VCType = "AnimaPaymentCapable"
+	VCTypeOwnerBound     VCType = "AnimaOwnerBound"
+
+	// Org-attestation types issuable via IssueCredential (master key).
+	VCTypeAddressVerified VCType = "AnimaAddressVerified"
+	VCTypeTrustScore      VCType = "AnimaTrustScore"
+)
+
+// VerifiableCredential is a Verifiable Credential record as stored by the
+// platform. The signed W3C credential itself is the JWTVC string; the other
+// fields are the platform's record of it (issuance, expiry, revocation).
 type VerifiableCredential struct {
-	ID                string   `json:"id"`
-	Type              []string `json:"type"`
-	Issuer            string   `json:"issuer"`
-	IssuanceDate      string   `json:"issuanceDate"`
-	ExpirationDate    string   `json:"expirationDate,omitempty"`
-	CredentialSubject any      `json:"credentialSubject"`
-	Proof             any      `json:"proof,omitempty"`
-	JWT               string   `json:"jwt,omitempty"`
+	ID         string `json:"id"`
+	AgentID    string `json:"agentId"`
+	OrgID      string `json:"orgId"`
+	Type       string `json:"type"`
+	JWTVC      string `json:"jwtVc"`
+	IssuerDID  string `json:"issuerDid"`
+	SubjectDID string `json:"subjectDid"`
+	IssuedAt   string `json:"issuedAt"`
+	// ExpiresAt is nil for non-expiring credentials.
+	ExpiresAt *string `json:"expiresAt"`
+	Revoked   bool    `json:"revoked"`
+	RevokedAt *string `json:"revokedAt"`
+	// RevocationIndex is the credential's bit position in the issuer's
+	// StatusList, nil if none was assigned.
+	RevocationIndex *int                   `json:"revocationIndex"`
+	Metadata        map[string]interface{} `json:"metadata"`
+	CreatedAt       string                 `json:"createdAt"`
+	UpdatedAt       string                 `json:"updatedAt"`
 }
 
-// VerifiableCredentialList wraps a list of verifiable credentials.
-type VerifiableCredentialList struct {
-	Items []VerifiableCredential `json:"items"`
+// IssueCredentialParams contains the parameters for issuing a verifiable
+// credential to an agent. Master-key only.
+//
+// Only the org-attestation types (VCTypeAddressVerified, VCTypeTrustScore)
+// can be issued here; the platform-reserved types are auto-issued on real
+// verification events (email OTP, phone provisioning, Stripe checkout) and
+// return a 403 from this endpoint.
+type IssueCredentialParams struct {
+	// Type is the credential type to issue.
+	Type VCType `json:"type"`
+	// Claims are additional claims for the credential subject. The subject
+	// id is always the agent's DID.
+	Claims map[string]interface{} `json:"claims,omitempty"`
+	// ExpiresInSeconds is the optional credential lifetime; omit (0) for a
+	// non-expiring credential.
+	ExpiresInSeconds int `json:"expiresInSeconds,omitempty"`
 }
 
 // VerifyCredentialOutput contains the result of a credential verification.
@@ -116,13 +159,45 @@ func (s *IdentityService) RotateKeys(ctx context.Context, agentID string) (*DidR
 	return &result, nil
 }
 
-// ListCredentials lists all verifiable credentials for an agent.
-func (s *IdentityService) ListCredentials(ctx context.Context, agentID string) (*VerifiableCredentialList, error) {
-	list, err := Do[VerifiableCredentialList](ctx, s.client, http.MethodGet, fmt.Sprintf("/agents/%s/credentials", agentID), nil, nil)
+// ListCredentials lists all verifiable credential records for an agent,
+// newest first. The API returns a bare JSON array (not an items envelope).
+func (s *IdentityService) ListCredentials(ctx context.Context, agentID string) ([]VerifiableCredential, error) {
+	list, err := Do[[]VerifiableCredential](ctx, s.client, http.MethodGet, fmt.Sprintf("/agents/%s/credentials", agentID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &list, nil
+	return list, nil
+}
+
+// IssueCredential issues a verifiable credential to an agent (master key).
+// See IssueCredentialParams for which types are issuable here.
+func (s *IdentityService) IssueCredential(ctx context.Context, agentID string, params IssueCredentialParams) (*VerifiableCredential, error) {
+	body := struct {
+		AgentID string `json:"agentId"`
+		IssueCredentialParams
+	}{
+		AgentID:               agentID,
+		IssueCredentialParams: params,
+	}
+	vc, err := Do[VerifiableCredential](ctx, s.client, http.MethodPost, fmt.Sprintf("/agents/%s/credentials", agentID), body, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &vc, nil
+}
+
+// RevokeCredential revokes a previously issued verifiable credential and
+// returns the updated (revoked) credential record.
+func (s *IdentityService) RevokeCredential(ctx context.Context, agentID, vcID string) (*VerifiableCredential, error) {
+	body := struct {
+		AgentID string `json:"agentId"`
+		VCID    string `json:"vcId"`
+	}{AgentID: agentID, VCID: vcID}
+	vc, err := Do[VerifiableCredential](ctx, s.client, http.MethodPost, fmt.Sprintf("/agents/%s/credentials/%s/revoke", agentID, vcID), body, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &vc, nil
 }
 
 // VerifyCredential verifies a JWT-encoded verifiable credential.

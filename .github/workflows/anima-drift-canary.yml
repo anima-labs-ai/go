@@ -1,0 +1,151 @@
+name: Anima drift canary
+
+# The Go SDK is hand-written against the anima monorepo's API contracts
+# (packages/contracts) — there is no build-time dependency that would fail
+# when the contracts change. That is exactly how SDK surfaces have silently
+# drifted before: endpoints were added or reshaped on anima main and no
+# signal reached this repo (the CLI, the one surface WITH a drift canary,
+# was also the one surface that didn't silently lose operations).
+#
+# This canary compares the contracts directory at the anima commit pinned
+# in .anima-ref against anima HEAD once a day. Any diff means "a human must
+# decide whether the SDK needs updating" — it files a labeled issue (one at
+# a time), and the loop is closed by a PR that absorbs any SDK-relevant
+# changes and bumps .anima-ref to the reviewed HEAD SHA.
+#
+# It also exercises ANIMA_REPO_TOKEN daily: that fine-grained PAT has a
+# hard expiry and has lapsed silently before (2026-07-05, on the cli repo),
+# so its next expiry should surface here rather than on a human's PR.
+#
+# Security: no untrusted external input reaches run: blocks — only
+# github.* built-ins (server_url/repository/run_id) passed via env, plus
+# file paths within the two checkouts. Scheduled workflows run from the
+# default branch only.
+
+on:
+  schedule:
+    # Daily, 05:41 UTC — before the Sofia workday; off the top of the hour
+    # to dodge the scheduler crunch (and offset from cli 05:17, python
+    # 05:27, node 05:29).
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    name: Diff pinned contracts against anima HEAD
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify ANIMA_REPO_TOKEN secret is configured
+        env:
+          ANIMA_REPO_TOKEN: ${{ secrets.ANIMA_REPO_TOKEN }}
+        run: |
+          if [ -z "$ANIMA_REPO_TOKEN" ]; then
+            echo "::error::Repo secret ANIMA_REPO_TOKEN is not set."
+            echo "::error::The canary needs a fine-grained PAT with 'Contents: Read' on anima-labs-ai/anima (same token the cli repo uses)."
+            echo "::error::Set it with: gh secret set ANIMA_REPO_TOKEN --repo anima-labs-ai/go"
+            exit 1
+          fi
+
+      - name: Checkout SDK
+        uses: actions/checkout@v4
+        with:
+          path: go
+
+      # No `ref:` on purpose — the whole point is to compare against HEAD.
+      - name: Checkout anima monorepo at HEAD
+        uses: actions/checkout@v4
+        with:
+          repository: anima-labs-ai/anima
+          path: anima
+          token: ${{ secrets.ANIMA_REPO_TOKEN }}
+          fetch-depth: 1
+
+      - name: Diff contracts (pinned ref vs HEAD)
+        working-directory: anima
+        run: |
+          PINNED="$(tr -d '[:space:]' < ../go/.anima-ref)"
+          if ! echo "$PINNED" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::.anima-ref does not contain a full 40-char commit SHA (got: '$PINNED')."
+            exit 1
+          fi
+
+          HEAD_SHA="$(git rev-parse HEAD)"
+          echo "Pinned anima commit: $PINNED"
+          echo "anima HEAD:          $HEAD_SHA"
+
+          if [ "$PINNED" = "$HEAD_SHA" ]; then
+            echo "Pin is at HEAD — no drift possible."
+            exit 0
+          fi
+
+          # Shallow-fetch just the pinned commit; a tree-level diff between
+          # two commits needs both trees, not their ancestry.
+          if ! git fetch --depth=1 origin "$PINNED"; then
+            echo "::error::Could not fetch pinned commit $PINNED from anima — is .anima-ref stale or the SHA rewritten?"
+            exit 1
+          fi
+
+          # No `|| true`: --stat exits 0 even when files differ, so a nonzero
+          # exit is a real git error and must fail loudly, not read as green.
+          git diff --stat "$PINNED" HEAD -- packages/contracts/ > "$RUNNER_TEMP/contracts-diff.txt"
+          if [ ! -s "$RUNNER_TEMP/contracts-diff.txt" ]; then
+            echo "Contracts unchanged between pin and HEAD ($PINNED..$HEAD_SHA) — SDK surface still current."
+            exit 0
+          fi
+
+          echo "::error::API contracts changed on anima main since the pinned ref — review the SDK surface."
+          cat "$RUNNER_TEMP/contracts-diff.txt"
+          exit 1
+
+      # One open issue at a time: if an anima-drift issue is already open,
+      # the repeat failure is visible on it and in the Actions history —
+      # don't spam a new issue per day.
+      - name: File drift issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PINNED_REF_FILE: go/.anima-ref
+        run: |
+          gh label create anima-drift \
+            --repo "$GITHUB_REPOSITORY" \
+            --description "anima contracts changed since the SDK's pinned ref" \
+            --color D93F0B --force
+          open_count="$(gh issue list --repo "$GITHUB_REPOSITORY" --label anima-drift --state open --json number --jq 'length')"
+          if [ "$open_count" != "0" ]; then
+            echo "An anima-drift issue is already open — not filing another."
+            exit 0
+          fi
+          pinned="$(tr -d '[:space:]' < "$PINNED_REF_FILE" || echo 'unreadable')"
+          {
+            echo "The daily drift canary failed: the anima monorepo's API contracts no longer match the ref this SDK was last reviewed against."
+            echo
+            echo "Failed run: $RUN_URL"
+            echo "Currently pinned anima commit (.anima-ref): $pinned"
+            echo
+            if [ -s "$RUNNER_TEMP/contracts-diff.txt" ]; then
+              echo "Changed contract files since the pin:"
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/contracts-diff.txt"
+              echo '```'
+              echo
+            fi
+            echo "What this means: nothing is broken *yet* — the published SDK keeps working against the deployed API — but the SDK surface may now be missing or misrepresenting endpoints (that is exactly how SDKs silently lost operations before)."
+            echo
+            echo "Checklist:"
+            echo "1. Open the failed run and look at which step failed."
+            echo "   - Failed at **checkout** with \"Bad credentials\": ANIMA_REPO_TOKEN expired again — mint a new fine-grained PAT (Contents: Read on anima-labs-ai/anima) and run: gh secret set ANIMA_REPO_TOKEN --repo anima-labs-ai/go"
+            echo "   - Failed at **diff**: contracts changed (list above)."
+            echo "2. For contract drift: review each changed file for SDK impact (new endpoints -> new service methods; changed schemas -> update the structs in the matching root *.go file, e.g. messages.go, domains.go; removed endpoints -> deprecate). Add or adjust tests."
+            echo "3. Bump .anima-ref to the reviewed anima HEAD SHA in the same PR (git ls-remote https://github.com/anima-labs-ai/anima main)."
+            echo "4. Close this issue when the canary is green again."
+          } > "$RUNNER_TEMP/drift-issue.md"
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "anima contracts drifted from the SDK's pinned ref" \
+            --label anima-drift \
+            --body-file "$RUNNER_TEMP/drift-issue.md"

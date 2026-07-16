@@ -28,7 +28,7 @@ const (
 	// DefaultMaxRetries is the default number of retries for failed requests.
 	DefaultMaxRetries = 3
 	// SDKVersion is the current version of this SDK.
-	SDKVersion = "0.2.1"
+	SDKVersion = "0.5.0"
 )
 
 // Client is the Anima API client. Create one with NewClient.
@@ -51,6 +51,8 @@ type Client struct {
 	Compliance *ComplianceService
 	// Domains provides methods for managing email domains.
 	Domains *DomainsService
+	// Drafts provides methods for managing email drafts.
+	Drafts *DraftsService
 	// Emails provides methods for listing emails and managing attachments.
 	Emails *EmailsService
 	// Extension provides methods for connecting browser extensions to an agent.
@@ -151,6 +153,7 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		Agents:        newAgentsService(internal),
 		Compliance:    newComplianceService(internal),
 		Domains:       newDomainsService(internal),
+		Drafts:        newDraftsService(internal),
 		Emails:        newEmailsService(internal),
 		Extension:     newExtensionService(internal),
 		Identity:      newIdentityService(internal),
