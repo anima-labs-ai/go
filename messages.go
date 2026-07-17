@@ -2,9 +2,11 @@ package anima
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 // MessageChannel represents the channel a message was sent through.
@@ -69,8 +71,13 @@ type Message struct {
 	SentAt      *string                `json:"sentAt"`
 	ReceivedAt  *string                `json:"receivedAt"`
 	Attachments []AttachmentOutput     `json:"attachments"`
-	CreatedAt   string                 `json:"createdAt"`
-	UpdatedAt   string                 `json:"updatedAt"`
+	// Labels are the workflow state on this message. Exactly one of the system
+	// labels "unread" or "read" is always present; "archived", "spam" (the
+	// inbound spam verdict) and your own labels may also appear. Change them
+	// with MessagesService.UpdateLabels.
+	Labels    []string `json:"labels"`
+	CreatedAt string   `json:"createdAt"`
+	UpdatedAt string   `json:"updatedAt"`
 }
 
 // EmailAttachment is a file attachment for an outbound email. Provide exactly
@@ -139,7 +146,16 @@ type MessageListParams struct {
 	ThreadID  string
 	Channel   MessageChannel
 	Direction MessageDirection
-	DateRange *DateRange
+	// Labels filters to messages carrying ALL of these labels
+	// ([]string{"urgent", "unread"} means urgent AND still unread).
+	// Case-insensitive. System labels: "unread", "read", "archived", "spam".
+	Labels []string
+	// IncludeSpam includes messages classified as spam on arrival, which are
+	// excluded by default. It is a pointer so an explicit false is
+	// distinguishable from unset — the same reason SemanticSearchParams.Threshold
+	// is one. Naming "spam" in Labels also counts as asking for it.
+	IncludeSpam *bool
+	DateRange   *DateRange
 }
 
 // ToQuery converts MessageListParams to URL query values.
@@ -156,6 +172,15 @@ func (p MessageListParams) ToQuery() url.Values {
 	}
 	if p.Direction != "" {
 		q.Set("direction", string(p.Direction))
+	}
+	// Add, not Set: one "labels" key per label is the repeated-key form the API
+	// reads as an array. Set would keep only the last, quietly widening
+	// "urgent AND unread" to "unread" and returning MORE mail than asked for.
+	for _, label := range p.Labels {
+		q.Add("labels", label)
+	}
+	if p.IncludeSpam != nil {
+		q.Set("includeSpam", strconv.FormatBool(*p.IncludeSpam))
 	}
 	if p.DateRange != nil {
 		if p.DateRange.From != "" {
@@ -174,7 +199,13 @@ type MessageSearchFilters struct {
 	Channel   MessageChannel   `json:"channel,omitempty"`
 	Direction MessageDirection `json:"direction,omitempty"`
 	Status    MessageStatus    `json:"status,omitempty"`
-	DateRange *DateRange       `json:"dateRange,omitempty"`
+	// Labels filters to results carrying ALL of these labels.
+	Labels []string `json:"labels,omitempty"`
+	// IncludeSpam includes spam-classified messages (excluded by default). A
+	// pointer so an explicit false survives omitempty, which would drop a
+	// plain false.
+	IncludeSpam *bool      `json:"includeSpam,omitempty"`
+	DateRange   *DateRange `json:"dateRange,omitempty"`
 }
 
 // MessageSearchParams contains parameters for searching messages.
@@ -248,6 +279,49 @@ func (s *MessagesService) SendSMS(ctx context.Context, params SendSMSParams) (*M
 // Get retrieves a message by ID.
 func (s *MessagesService) Get(ctx context.Context, id string) (*Message, error) {
 	msg, err := Do[Message](ctx, s.client, http.MethodGet, fmt.Sprintf("/messages/%s", id), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
+
+// UpdateLabelsParams contains the label changes for one message. Supply at
+// least one of AddLabels or RemoveLabels.
+//
+// Add/remove rather than a whole-array replace: two agents working the same
+// inbox would silently erase each other's tags under a Set, and the server
+// applies both operations in a single statement so concurrent callers
+// converge on the same result rather than racing.
+type UpdateLabelsParams struct {
+	// AddLabels are applied first. Adding "read" removes "unread" and vice
+	// versa — they are one state under two names, and a message always carries
+	// exactly one of them.
+	AddLabels []string `json:"addLabels,omitempty"`
+	// RemoveLabels are applied after AddLabels. Removing "unread" marks the
+	// message read; a message is never left with neither.
+	RemoveLabels []string `json:"removeLabels,omitempty"`
+	// ID is set by UpdateLabels from its id argument — the contract requires it
+	// in the body as well as the path.
+	ID string `json:"id"`
+}
+
+// ErrNoLabelChanges is returned by UpdateLabels when neither AddLabels nor
+// RemoveLabels is supplied. Refused locally rather than sent: the API's 400
+// would not say which of the two operations the caller forgot, and a request
+// that changes nothing must not look like success.
+var ErrNoLabelChanges = errors.New("anima: UpdateLabels requires at least one of AddLabels or RemoveLabels")
+
+// UpdateLabels adds and/or removes labels on one message — the agent's
+// workflow state — and returns the updated message, so the caller never has to
+// guess what the labels became.
+//
+// One message per call: there is deliberately no batch form.
+func (s *MessagesService) UpdateLabels(ctx context.Context, id string, params UpdateLabelsParams) (*Message, error) {
+	if len(params.AddLabels) == 0 && len(params.RemoveLabels) == 0 {
+		return nil, ErrNoLabelChanges
+	}
+	params.ID = id
+	msg, err := Do[Message](ctx, s.client, http.MethodPatch, fmt.Sprintf("/messages/%s/labels", id), params, nil)
 	if err != nil {
 		return nil, err
 	}
