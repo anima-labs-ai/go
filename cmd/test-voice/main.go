@@ -19,7 +19,7 @@ func main() {
 	fmt.Printf("Voices: %d\n", len(voices.Voices))
 	if len(voices.Voices) > 0 {
 		v := voices.Voices[0]
-		fmt.Printf("First: %s | %s | %s | %s | %s\n", v.ID, v.Name, v.Provider, v.Tier, v.Gender)
+		fmt.Printf("First: %s | %s | %s | %s\n", v.ID, v.Name, v.Gender, v.Language)
 	}
 
 	// Test 2: List calls

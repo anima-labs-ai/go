@@ -6,19 +6,21 @@ import (
 	"net/url"
 )
 
-// Voice represents an available voice for AI agent phone calls.
+// Voice represents a voice in the catalog. Vendor-neutral: the underlying
+// provider/model is never exposed — only descriptive metadata and a proxied
+// preview URL.
 type Voice struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Provider    string `json:"provider"`
-	Tier        string `json:"tier"`
-	Gender      string `json:"gender,omitempty"`
-	Language    string `json:"language"`
-	Accent      string `json:"accent,omitempty"`
-	Style       string `json:"style,omitempty"`
-	AgeRange    string `json:"ageRange,omitempty"`
-	Description string `json:"description,omitempty"`
-	PreviewURL  string `json:"previewUrl,omitempty"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Gender      string   `json:"gender"`
+	Accent      string   `json:"accent,omitempty"`
+	Age         string   `json:"age,omitempty"`
+	Descriptors []string `json:"descriptors"`
+	UseCases    []string `json:"useCases"`
+	Language    string   `json:"language"`
+	// SampleURL is a vendor-neutral preview URL under the API host — the client
+	// never touches the provider CDN. Empty until a sample clip is generated.
+	SampleURL string `json:"sampleUrl,omitempty"`
 }
 
 // VoiceList wraps a list of voices.
@@ -28,7 +30,6 @@ type VoiceList struct {
 
 // ListVoicesParams contains parameters for filtering the voice catalog.
 type ListVoicesParams struct {
-	Tier     string
 	Gender   string
 	Language string
 }
@@ -43,12 +44,9 @@ func newVoicesService(c *httpClient) *VoicesService {
 	return &VoicesService{client: c}
 }
 
-// List returns available voices, optionally filtered by tier, gender, or language.
+// List returns available voices, optionally filtered by gender or language.
 func (s *VoicesService) List(ctx context.Context, params ListVoicesParams) (*VoiceList, error) {
 	q := url.Values{}
-	if params.Tier != "" {
-		q.Set("tier", params.Tier)
-	}
 	if params.Gender != "" {
 		q.Set("gender", params.Gender)
 	}
