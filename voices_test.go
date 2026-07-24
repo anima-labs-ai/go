@@ -2,6 +2,7 @@ package anima
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -53,15 +54,59 @@ func TestVoiceUnmarshalCatalog(t *testing.T) {
 	}
 }
 
-// TestVoiceMinimalOmitsOptionalFields verifies a voice without optional fields
-// (accent/age/sampleUrl) decodes cleanly to zero values.
-func TestVoiceMinimalOmitsOptionalFields(t *testing.T) {
-	raw := `{"id":"thalia","name":"Thalia","gender":"neutral","descriptors":[],"useCases":[],"language":"en"}`
-	var v Voice
-	if err := json.Unmarshal([]byte(raw), &v); err != nil {
-		t.Fatalf("unmarshal: %v", err)
+// TestVoiceMarshalTags locks the JSON tags that an unmarshal test cannot:
+// omitempty on the optionals, and the EXACT (case-sensitive) key spelling.
+// Go's json unmarshal is case-insensitive, so a sampleUrl->sampleURL tag
+// regression slips past a decode test — but marshal is case-exact.
+func TestVoiceMarshalTags(t *testing.T) {
+	// Only required fields set; optionals left empty.
+	minimal, err := json.Marshal(Voice{
+		ID:          "thalia",
+		Name:        "Thalia",
+		Gender:      "neutral",
+		Descriptors: []string{},
+		UseCases:    []string{},
+		Language:    "en",
+	})
+	if err != nil {
+		t.Fatalf("marshal minimal: %v", err)
 	}
-	if v.Accent != "" || v.Age != "" || v.SampleURL != "" {
-		t.Errorf("expected empty optionals, got accent=%q age=%q sampleUrl=%q", v.Accent, v.Age, v.SampleURL)
+	got := string(minimal)
+	// omitempty: empty optionals must be absent from the output.
+	for _, key := range []string{`"accent"`, `"age"`, `"sampleUrl"`} {
+		if strings.Contains(got, key) {
+			t.Errorf("empty optional %s should be omitted, got: %s", key, got)
+		}
+	}
+	// Required keys must be present with exact case.
+	for _, key := range []string{`"id"`, `"name"`, `"gender"`, `"descriptors"`, `"useCases"`, `"language"`} {
+		if !strings.Contains(got, key) {
+			t.Errorf("required key %s missing, got: %s", key, got)
+		}
+	}
+
+	// When set, the optionals marshal to their exact camelCase keys — not
+	// sampleURL / sample_url / usecases (regressions a decode test can't catch).
+	full, err := json.Marshal(Voice{
+		ID:          "celeste",
+		Name:        "Celeste",
+		Gender:      "female",
+		Accent:      "Castilian",
+		Descriptors: []string{"warm"},
+		UseCases:    []string{"support"},
+		Language:    "es",
+		SampleURL:   "https://api.useanima.sh/v1/voice/catalog/celeste/sample",
+	})
+	if err != nil {
+		t.Fatalf("marshal full: %v", err)
+	}
+	got2 := string(full)
+	if !strings.Contains(got2, `"sampleUrl"`) || !strings.Contains(got2, `"accent"`) {
+		t.Errorf(`expected exact-case "sampleUrl" and "accent" when set, got: %s`, got2)
+	}
+	for _, bad := range []string{`"sampleURL"`, `"sample_url"`, `"usecases"`, `"use_cases"`} {
+		if strings.Contains(got2, bad) {
+			t.Errorf("mis-cased/shaped tag %s regressed, got: %s", bad, got2)
+		}
 	}
 }
