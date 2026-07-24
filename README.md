@@ -454,6 +454,26 @@ q, err := client.Anomaly.Quarantine(ctx, "org_123", "agent_123", anima.Quarantin
 })
 ```
 
+### Voices
+
+Browse the multilingual voice catalog (English, Spanish, French, German, Italian, Japanese, Dutch, and more). Each voice carries descriptive metadata and a vendor-neutral `SampleURL` preview.
+
+```go
+// List every voice, or filter by language / gender.
+spanish, err := client.Voices.List(ctx, anima.ListVoicesParams{Language: "es"})
+if err != nil {
+    log.Fatal(err)
+}
+for _, v := range spanish.Voices {
+    fmt.Println(v.ID, v.Name, v.Language, v.Descriptors)
+    // SampleURL is a vendor-neutral clip served from the API host
+    // (empty until a sample has been generated for that voice).
+    if v.SampleURL != "" {
+        fmt.Println("preview:", v.SampleURL)
+    }
+}
+```
+
 ## Pagination
 
 List endpoints return paginated results. Use `ListAutoPaging` for automatic iteration:
