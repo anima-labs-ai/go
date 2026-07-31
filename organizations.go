@@ -8,13 +8,17 @@ import (
 )
 
 // Tier represents the subscription tier of an organization.
+//
+// The constants mirror TierSchema in the anima contracts and the Prisma Tier
+// enum. TierStarter was missing while TierDeveloper and TierScale — naming
+// tiers the API neither accepts nor returns — were defined, so the one
+// constant a paying Starter customer needed was the one that did not exist.
 type Tier string
 
 const (
 	TierFree       Tier = "FREE"
-	TierDeveloper  Tier = "DEVELOPER"
+	TierStarter    Tier = "STARTER"
 	TierGrowth     Tier = "GROWTH"
-	TierScale      Tier = "SCALE"
 	TierEnterprise Tier = "ENTERPRISE"
 )
 
