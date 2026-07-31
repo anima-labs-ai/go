@@ -302,6 +302,10 @@ var apiRoutes = map[string]struct{}{
 	"GET /webhooks/event-types":                     {},
 }
 
+// Matches a method constant followed by a path literal. A2AService.Discover is
+// deliberately not matched: it builds a URL from a caller-supplied foreign host
+// (/.well-known/agent.json) rather than calling an Anima route, so it has no
+// business in the allowlist.
 var callPattern = regexp.MustCompile(`http\.Method([A-Za-z]+),\s*(?:fmt\.Sprintf\(\s*)?"(/[^"]*)"`)
 
 // pathParams differ per call site; compare shapes, not ids.
