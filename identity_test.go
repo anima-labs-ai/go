@@ -207,3 +207,93 @@ func TestIdentityService_RevokeCredential(t *testing.T) {
 		t.Errorf("expected RevokedAt '2026-07-17T12:30:00Z', got %v", vc.RevokedAt)
 	}
 }
+
+// VerifyCredential decodes the contract's {valid, credential, errors}. The SDK
+// declared a "checks" field the API has never sent and omitted "credential"
+// entirely, so a successful verification threw away the decoded credential —
+// the only reason to call this endpoint rather than trust the JWT blindly.
+func TestIdentityService_VerifyCredential(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/identity/verify", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		var body struct {
+			JWTVC string `json:"jwtVc"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode body: %v", err)
+		}
+		if body.JWTVC != "eyJhbGciOiJFZERTQSJ9.e30.sig" {
+			t.Errorf("unexpected jwtVc %q", body.JWTVC)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"valid": true,
+			"credential": map[string]interface{}{
+				"id":                "urn:uuid:vc-1",
+				"type":              "AnimaEmailVerified",
+				"issuer":            "did:web:agents.useanima.sh:anima:platform",
+				"subject":           "did:web:agents.useanima.sh:org1:agent123",
+				"issuanceDate":      "2026-07-17T10:00:00Z",
+				"expirationDate":    nil,
+				"credentialSubject": map[string]interface{}{"email": "a@example.com"},
+				"proof":             map[string]interface{}{"type": "JsonWebSignature2020"},
+			},
+			"errors": []string{},
+		})
+	})
+
+	client, ts := newTestClient(mux)
+	defer ts.Close()
+
+	result, err := client.Identity.VerifyCredential(context.Background(), "eyJhbGciOiJFZERTQSJ9.e30.sig")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.Valid {
+		t.Error("expected valid=true")
+	}
+	if result.Credential == nil {
+		t.Fatal("expected the decoded credential, got nil")
+	}
+	if result.Credential.Issuer != "did:web:agents.useanima.sh:anima:platform" {
+		t.Errorf("unexpected issuer %q", result.Credential.Issuer)
+	}
+	if result.Credential.CredentialSubject["email"] != "a@example.com" {
+		t.Errorf("credentialSubject did not decode: %v", result.Credential.CredentialSubject)
+	}
+	if len(result.Errors) != 0 {
+		t.Errorf("expected no errors, got %v", result.Errors)
+	}
+}
+
+// An invalid credential comes back with credential nil and the reasons filled.
+func TestIdentityService_VerifyCredential_Invalid(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/identity/verify", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"valid":      false,
+			"credential": nil,
+			"errors":     []string{"revoked", "signature mismatch"},
+		})
+	})
+
+	client, ts := newTestClient(mux)
+	defer ts.Close()
+
+	result, err := client.Identity.VerifyCredential(context.Background(), "eyJ.bad.sig")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Valid {
+		t.Error("expected valid=false")
+	}
+	if result.Credential != nil {
+		t.Error("expected no credential on an invalid result")
+	}
+	if len(result.Errors) != 2 {
+		t.Errorf("expected 2 errors, got %v", result.Errors)
+	}
+}

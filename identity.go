@@ -103,11 +103,26 @@ type IssueCredentialParams struct {
 	ExpiresInSeconds int `json:"expiresInSeconds,omitempty"`
 }
 
+// VerifiableCredentialDocument is the decoded W3C credential returned by
+// VerifyCredential. Distinct from VerifiableCredential, which is the
+// platform's record of an issued credential.
+type VerifiableCredentialDocument struct {
+	ID                string                 `json:"id"`
+	Type              string                 `json:"type"`
+	Issuer            string                 `json:"issuer"`
+	Subject           string                 `json:"subject"`
+	IssuanceDate      string                 `json:"issuanceDate"`
+	ExpirationDate    *string                `json:"expirationDate"`
+	CredentialSubject map[string]interface{} `json:"credentialSubject"`
+	Proof             map[string]interface{} `json:"proof"`
+}
+
 // VerifyCredentialOutput contains the result of a credential verification.
+// Credential is nil when Valid is false.
 type VerifyCredentialOutput struct {
-	Valid  bool     `json:"valid"`
-	Checks []string `json:"checks,omitempty"`
-	Errors []string `json:"errors,omitempty"`
+	Valid      bool                          `json:"valid"`
+	Credential *VerifiableCredentialDocument `json:"credential"`
+	Errors     []string                      `json:"errors"`
 }
 
 // AgentCardOutput represents an agent's public card (machine-readable profile).

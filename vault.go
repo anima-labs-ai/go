@@ -11,10 +11,13 @@ import (
 type CredentialType string
 
 const (
-	CredentialTypeLogin      CredentialType = "login"
-	CredentialTypeSecureNote CredentialType = "secure_note"
-	CredentialTypeCard       CredentialType = "card"
-	CredentialTypeIdentity   CredentialType = "identity"
+	CredentialTypeLogin       CredentialType = "login"
+	CredentialTypeSecureNote  CredentialType = "secure_note"
+	CredentialTypeCard        CredentialType = "card"
+	CredentialTypeIdentity    CredentialType = "identity"
+	CredentialTypeOAuthToken  CredentialType = "oauth_token"
+	CredentialTypeAPIKey      CredentialType = "api_key"
+	CredentialTypeCertificate CredentialType = "certificate"
 )
 
 // VaultIdentity represents a vault provisioned for an agent.
@@ -168,6 +171,163 @@ type VaultCredentialList struct {
 	Items []VaultCredential `json:"items"`
 }
 
+// VaultIdentityListItem is a provisioned vault plus the name and slug of the
+// agent that owns it, as returned by ListIdentities.
+type VaultIdentityListItem struct {
+	VaultIdentity
+	AgentName string `json:"agentName"`
+	AgentSlug string `json:"agentSlug"`
+}
+
+// ListVaultIdentitiesParams filters the org's vault identities.
+type ListVaultIdentitiesParams struct {
+	ListParams
+	// Status is one of ACTIVE, LOCKED, ERROR. Empty means no filter.
+	Status string
+}
+
+// ToQuery converts ListVaultIdentitiesParams into URL query values.
+func (p ListVaultIdentitiesParams) ToQuery() url.Values {
+	q := p.ListParams.ToQuery()
+	if p.Status != "" {
+		q.Set("status", p.Status)
+	}
+	return q
+}
+
+// VaultAuditLogEntry records one access or modification of a credential. It
+// never contains secret material.
+type VaultAuditLogEntry struct {
+	ID           string `json:"id"`
+	CredentialID string `json:"credentialId"`
+	AgentID      string `json:"agentId"`
+	OrgID        string `json:"orgId"`
+	// Action is e.g. access, access_reveal, store, delete, refresh, refresh_failed.
+	Action string `json:"action"`
+	// Actor is a user ID, or "system" for platform-initiated actions.
+	Actor     string                 `json:"actor"`
+	IPAddress *string                `json:"ipAddress"`
+	Metadata  map[string]interface{} `json:"metadata"`
+	CreatedAt string                 `json:"createdAt"`
+}
+
+// VaultAuditParams filters the credential audit trail. Since and Until are
+// RFC 3339 timestamps.
+type VaultAuditParams struct {
+	ListParams
+	CredentialID string
+	AgentID      string
+	Action       string
+	Since        string
+	Until        string
+}
+
+// ToQuery converts VaultAuditParams into URL query values.
+func (p VaultAuditParams) ToQuery() url.Values {
+	q := p.ListParams.ToQuery()
+	if p.CredentialID != "" {
+		q.Set("credentialId", p.CredentialID)
+	}
+	if p.AgentID != "" {
+		q.Set("agentId", p.AgentID)
+	}
+	if p.Action != "" {
+		q.Set("action", p.Action)
+	}
+	if p.Since != "" {
+		q.Set("since", p.Since)
+	}
+	if p.Until != "" {
+		q.Set("until", p.Until)
+	}
+	return q
+}
+
+// UseCredentialParams describes an outbound call to make with a credential
+// attached server-side.
+type UseCredentialParams struct {
+	// AgentID is optional when authenticating with an agent API key.
+	AgentID string `json:"agentId,omitempty"`
+	// Method is one of GET, POST, PUT, PATCH, DELETE, HEAD.
+	Method string `json:"method"`
+	// URL must be absolute https:// and its host must be on the credential's
+	// allowlist.
+	URL string `json:"url"`
+	// Headers are extra request headers. Any auth header here is dropped and
+	// replaced by the credential.
+	Headers map[string]string `json:"headers,omitempty"`
+	// Body is the raw request body — encode JSON yourself.
+	Body string `json:"body,omitempty"`
+}
+
+// UseCredentialResult is the upstream response, scrubbed of the injected
+// credential.
+type UseCredentialResult struct {
+	Status  int               `json:"status"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+	// Truncated is true when the body exceeded the size cap and was cut off.
+	Truncated bool `json:"truncated"`
+}
+
+// CredentialRequestStatus is the lifecycle status of a human-in-the-loop
+// credential request.
+type CredentialRequestStatus string
+
+const (
+	// CredentialRequestStatusPending means the request is awaiting the human.
+	CredentialRequestStatusPending CredentialRequestStatus = "PENDING"
+	// CredentialRequestStatusFulfilled means the secret was submitted and the
+	// credential reference is ready.
+	CredentialRequestStatusFulfilled CredentialRequestStatus = "FULFILLED"
+	CredentialRequestStatusExpired   CredentialRequestStatus = "EXPIRED"
+	CredentialRequestStatusDeclined  CredentialRequestStatus = "DECLINED"
+	CredentialRequestStatusCancelled CredentialRequestStatus = "CANCELLED"
+)
+
+// CreateCredentialRequestParams asks a human for a secret out-of-band. The
+// secret is never passed as an argument here.
+type CreateCredentialRequestParams struct {
+	AgentID string         `json:"agentId,omitempty"`
+	Type    CredentialType `json:"type"`
+	// Name is the display name for the credential to be created.
+	Name string `json:"name"`
+	// Reason is shown to the owner to explain why the credential is needed.
+	Reason string `json:"reason"`
+	// TTLSeconds is 60-3600; zero means the server default of 900 (15 minutes).
+	TTLSeconds int `json:"ttlSeconds,omitempty"`
+	// NotifyOwner emails the fill URL to the org owner.
+	NotifyOwner bool `json:"notifyOwner,omitempty"`
+}
+
+// CredentialRequest is a created credential request.
+type CredentialRequest struct {
+	RequestID string `json:"requestId"`
+	// FillURL is the token-gated URL where the human submits the secret.
+	FillURL   string                  `json:"fillUrl"`
+	Status    CredentialRequestStatus `json:"status"`
+	ExpiresAt string                  `json:"expiresAt"`
+	EmailSent bool                    `json:"emailSent"`
+	// CredentialID is set when the request resolved synchronously; nil
+	// otherwise, in which case poll GetCredentialRequestStatus.
+	CredentialID *string `json:"credentialId"`
+}
+
+// CredentialRequestStatusResult is a polled credential request.
+type CredentialRequestStatusResult struct {
+	Status CredentialRequestStatus `json:"status"`
+	// CredentialID is set once the request is FULFILLED, nil otherwise.
+	CredentialID *string `json:"credentialId"`
+	// MaskedPreview (e.g. ****1234) confirms which secret arrived without
+	// revealing it. Nil until FULFILLED.
+	MaskedPreview *string `json:"maskedPreview"`
+}
+
+// CancelCredentialRequestResult is the outcome of cancelling a request.
+type CancelCredentialRequestResult struct {
+	Status CredentialRequestStatus `json:"status"`
+}
+
 // SharePermission represents the permission level for a shared credential.
 type SharePermission string
 
@@ -255,6 +415,56 @@ func newVaultService(c *httpClient) *VaultService {
 	return &VaultService{client: c}
 }
 
+// ListIdentities lists the provisioned vaults across the organization.
+func (s *VaultService) ListIdentities(ctx context.Context, params *ListVaultIdentitiesParams) (*Page[VaultIdentityListItem], error) {
+	var q url.Values
+	if params != nil {
+		q = params.ToQuery()
+	}
+	page, err := Do[Page[VaultIdentityListItem]](ctx, s.client, http.MethodGet, "/vault/identities", nil, q)
+	if err != nil {
+		return nil, err
+	}
+	return &page, nil
+}
+
+// ListIdentitiesAutoPaging iterates every vault identity, fetching pages as needed.
+func (s *VaultService) ListIdentitiesAutoPaging(params *ListVaultIdentitiesParams) *ListIterator[VaultIdentityListItem] {
+	return NewListIterator(func(ctx context.Context, cursor string) (*Page[VaultIdentityListItem], error) {
+		p := &ListVaultIdentitiesParams{}
+		if params != nil {
+			*p = *params
+		}
+		p.Cursor = cursor
+		return s.ListIdentities(ctx, p)
+	})
+}
+
+// Audit queries the credential access and modification trail.
+func (s *VaultService) Audit(ctx context.Context, params *VaultAuditParams) (*Page[VaultAuditLogEntry], error) {
+	var q url.Values
+	if params != nil {
+		q = params.ToQuery()
+	}
+	page, err := Do[Page[VaultAuditLogEntry]](ctx, s.client, http.MethodGet, "/vault/audit", nil, q)
+	if err != nil {
+		return nil, err
+	}
+	return &page, nil
+}
+
+// AuditAutoPaging iterates every audit entry, fetching pages as needed.
+func (s *VaultService) AuditAutoPaging(params *VaultAuditParams) *ListIterator[VaultAuditLogEntry] {
+	return NewListIterator(func(ctx context.Context, cursor string) (*Page[VaultAuditLogEntry], error) {
+		p := &VaultAuditParams{}
+		if params != nil {
+			*p = *params
+		}
+		p.Cursor = cursor
+		return s.Audit(ctx, p)
+	})
+}
+
 // Provision provisions a vault for an agent.
 func (s *VaultService) Provision(ctx context.Context, agentID string) (*VaultIdentity, error) {
 	body := struct {
@@ -321,6 +531,51 @@ func (s *VaultService) UpdateCredential(ctx context.Context, id string, params U
 func (s *VaultService) DeleteCredential(ctx context.Context, id string) error {
 	_, err := Do[struct{}](ctx, s.client, http.MethodDelete, fmt.Sprintf("/vault/credentials/%s", id), nil, nil)
 	return err
+}
+
+// UseCredential makes an outbound HTTPS call with the credential attached
+// server-side and returns the upstream response. The plaintext secret is never
+// returned — this is how a brokered credential is used without revealing it.
+func (s *VaultService) UseCredential(ctx context.Context, id string, params UseCredentialParams) (*UseCredentialResult, error) {
+	result, err := Do[UseCredentialResult](ctx, s.client, http.MethodPost, fmt.Sprintf("/vault/credentials/%s/use", id), params, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// CreateCredentialRequest asks a human to supply a secret out-of-band. Hand the
+// returned FillURL to the human; the secret never passes through the agent.
+//
+// Named credentialRequestCreate in the node and python SDKs.
+func (s *VaultService) CreateCredentialRequest(ctx context.Context, params CreateCredentialRequestParams) (*CredentialRequest, error) {
+	req, err := Do[CredentialRequest](ctx, s.client, http.MethodPost, "/vault/credential-requests", params, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &req, nil
+}
+
+// GetCredentialRequestStatus polls a credential request until it is FULFILLED.
+//
+// Named credentialRequestStatus in the node and python SDKs.
+func (s *VaultService) GetCredentialRequestStatus(ctx context.Context, requestID string) (*CredentialRequestStatusResult, error) {
+	result, err := Do[CredentialRequestStatusResult](ctx, s.client, http.MethodGet, fmt.Sprintf("/vault/credential-requests/%s", requestID), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// CancelCredentialRequest invalidates a pending request and its fill URL.
+//
+// Named credentialRequestCancel in the node and python SDKs.
+func (s *VaultService) CancelCredentialRequest(ctx context.Context, requestID string) (*CancelCredentialRequestResult, error) {
+	result, err := Do[CancelCredentialRequestResult](ctx, s.client, http.MethodPost, fmt.Sprintf("/vault/credential-requests/%s/cancel", requestID), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 // Search searches credentials in the vault.

@@ -311,6 +311,13 @@ var callPattern = regexp.MustCompile(`http\.Method([A-Za-z]+),\s*(?:fmt\.Sprintf
 // pathParams differ per call site; compare shapes, not ids.
 var pathParam = regexp.MustCompile(`%[sdv]`)
 
+// Catches a path built by concatenation rather than fmt.Sprintf. callPattern
+// stops at the closing quote of the first literal, so `"/voice/calls/"+id+
+// "/transcript"` was scanned as GET /voice/calls — a real route, so it passed
+// while the segment after the id went unchecked entirely. Anything after the
+// first `+` is invisible to the guard, so require fmt.Sprintf instead.
+var concatPath = regexp.MustCompile(`http\.Method[A-Za-z]+,\s*"(/[^"]*)"\s*\+`)
+
 type sdkCall struct {
 	file  string
 	route string
@@ -347,6 +354,31 @@ func collectSDKCalls(t *testing.T) []sdkCall {
 func TestRouteScanFoundTheServiceCalls(t *testing.T) {
 	if got := len(collectSDKCalls(t)); got < 110 {
 		t.Fatalf("expected the scan to find >=110 calls, found %d — has the call pattern drifted?", got)
+	}
+}
+
+// A concatenated path hides everything after the first `+` from the guard, so
+// the route below it is never verified. Keep every path a single literal.
+func TestNoServiceBuildsAPathByConcatenation(t *testing.T) {
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatalf("read package dir: %v", err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		source, err := os.ReadFile(filepath.Clean(name))
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		for _, m := range concatPath.FindAllStringSubmatch(string(source), -1) {
+			t.Errorf(
+				"%s builds a path by concatenating onto %q — the route guard cannot see past the `+`. Use fmt.Sprintf.",
+				name, m[1],
+			)
+		}
 	}
 }
 
