@@ -29,29 +29,21 @@ const (
 	SecuritySeverityCritical SecuritySeverity = "CRITICAL"
 )
 
-// SecurityScanParams contains the parameters for a content security scan.
-type SecurityScanParams struct {
-	OrgID    string                 `json:"orgId"`
-	AgentID  string                 `json:"agentId,omitempty"`
-	Channel  string                 `json:"channel"` // "EMAIL" or "SMS"
-	Subject  string                 `json:"subject,omitempty"`
-	Body     string                 `json:"body"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+// SecurityScanParams, SecurityScanWarning and SecurityScanResult used to sit
+// here. They typed a POST /security/scan endpoint the API has never served.
+
+// AiScannerStatus describes the AI content scanner's health.
+type AiScannerStatus struct {
+	// Active reports whether the scanner runs on message traffic, not merely
+	// whether an LLM provider is configured.
+	Active         bool    `json:"active"`
+	Provider       *string `json:"provider"`
+	FallbackReason *string `json:"fallbackReason"`
 }
 
-// SecurityScanWarning represents a warning from a content scan.
-type SecurityScanWarning struct {
-	RuleID      string           `json:"ruleId"`
-	Severity    SecuritySeverity `json:"severity"`
-	Description string           `json:"description"`
-	Match       string           `json:"match,omitempty"`
-}
-
-// SecurityScanResult contains the result of a content security scan.
-type SecurityScanResult struct {
-	Blocked  bool                  `json:"blocked"`
-	Warnings []SecurityScanWarning `json:"warnings"`
-	Summary  string                `json:"summary"`
+// ScannerStatus is the current scanner health for an organization.
+type ScannerStatus struct {
+	AiScanner AiScannerStatus `json:"aiScanner"`
 }
 
 // SecurityEvent represents a security event in the Anima platform.
@@ -104,10 +96,14 @@ func newSecurityService(c *httpClient) *SecurityService {
 	return &SecurityService{client: c}
 }
 
-// ScanContent scans message content for security threats such as PII leakage
-// or prompt injection.
-func (s *SecurityService) ScanContent(ctx context.Context, params SecurityScanParams) (*SecurityScanResult, error) {
-	result, err := Do[SecurityScanResult](ctx, s.client, http.MethodPost, "/security/scan", params, nil)
+// No ScanContent. It POSTed to /security/scan, which the API has never served
+// — scanning runs inside the send paths, not as a callable route. The security
+// surface the API does expose is the event feed and the scanner status below.
+
+// GetScannerStatus reports whether the AI content scanner is running on message
+// traffic, and why it is in fallback if it is not.
+func (s *SecurityService) GetScannerStatus(ctx context.Context, orgID string) (*ScannerStatus, error) {
+	result, err := Do[ScannerStatus](ctx, s.client, http.MethodGet, fmt.Sprintf("/orgs/%s/security/scanner-status", orgID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
