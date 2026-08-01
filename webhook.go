@@ -19,10 +19,10 @@ const (
 
 // WebhookEvent represents a parsed and verified webhook event from Anima.
 type WebhookEvent struct {
-	ID        string                 `json:"id,omitempty"`
-	Type      string                 `json:"type"`
-	Data      map[string]any         `json:"data"`
-	CreatedAt string                 `json:"createdAt,omitempty"`
+	ID        string         `json:"id,omitempty"`
+	Type      string         `json:"type"`
+	Data      map[string]any `json:"data"`
+	CreatedAt string         `json:"createdAt,omitempty"`
 }
 
 // WebhookVerifyOptions configures webhook signature verification.

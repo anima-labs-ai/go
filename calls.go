@@ -72,7 +72,7 @@ type TranscriptSegment struct {
 
 // CallTranscript contains the full transcript for a call.
 type CallTranscript struct {
-	CallID   string             `json:"callId"`
+	CallID   string              `json:"callId"`
 	Segments []TranscriptSegment `json:"segments"`
 }
 

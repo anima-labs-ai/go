@@ -45,10 +45,10 @@ const (
 type TenDLCStatus string
 
 const (
-	TenDLCStatusPending      TenDLCStatus = "PENDING"
-	TenDLCStatusRegistered   TenDLCStatus = "REGISTERED"
-	TenDLCStatusRejected     TenDLCStatus = "REJECTED"
-	TenDLCStatusNotRequired  TenDLCStatus = "NOT_REQUIRED"
+	TenDLCStatusPending     TenDLCStatus = "PENDING"
+	TenDLCStatusRegistered  TenDLCStatus = "REGISTERED"
+	TenDLCStatusRejected    TenDLCStatus = "REJECTED"
+	TenDLCStatusNotRequired TenDLCStatus = "NOT_REQUIRED"
 )
 
 // PhoneIdentity represents a phone identity attached to an agent.

@@ -33,10 +33,10 @@ type VaultIdentity struct {
 
 // VaultLoginData contains login credential data.
 type VaultLoginData struct {
-	Username string      `json:"username,omitempty"`
-	Password string      `json:"password,omitempty"`
-	URIs     []VaultURI  `json:"uris,omitempty"`
-	TOTP     string      `json:"totp,omitempty"`
+	Username string     `json:"username,omitempty"`
+	Password string     `json:"password,omitempty"`
+	URIs     []VaultURI `json:"uris,omitempty"`
+	TOTP     string     `json:"totp,omitempty"`
 }
 
 // VaultURI represents a URI associated with a login credential.
@@ -136,11 +136,11 @@ type SearchVaultParams struct {
 
 // GeneratePasswordParams contains parameters for generating a password.
 type GeneratePasswordParams struct {
-	Length    int  `json:"length,omitempty"`
+	Length    int   `json:"length,omitempty"`
 	Uppercase *bool `json:"uppercase,omitempty"`
 	Lowercase *bool `json:"lowercase,omitempty"`
-	Number   *bool `json:"number,omitempty"`
-	Special  *bool `json:"special,omitempty"`
+	Number    *bool `json:"number,omitempty"`
+	Special   *bool `json:"special,omitempty"`
 }
 
 // GeneratePasswordResult contains the generated password.

@@ -7,17 +7,17 @@ import (
 
 // Sentinel errors for use with errors.Is.
 var (
-	ErrAuthentication  = errors.New("authentication failed")
-	ErrNotFound        = errors.New("resource not found")
-	ErrValidation      = errors.New("validation failed")
-	ErrRateLimit       = errors.New("rate limit exceeded")
-	ErrConflict        = errors.New("resource conflict")
-	ErrInternalServer  = errors.New("internal server error")
-	ErrTimeout         = errors.New("request timed out")
-	ErrNetwork         = errors.New("network error")
-	ErrRetryExhausted  = errors.New("request failed after retries")
-	ErrWebhookInvalid  = errors.New("invalid webhook signature")
-	ErrWebhookExpired  = errors.New("webhook timestamp expired")
+	ErrAuthentication = errors.New("authentication failed")
+	ErrNotFound       = errors.New("resource not found")
+	ErrValidation     = errors.New("validation failed")
+	ErrRateLimit      = errors.New("rate limit exceeded")
+	ErrConflict       = errors.New("resource conflict")
+	ErrInternalServer = errors.New("internal server error")
+	ErrTimeout        = errors.New("request timed out")
+	ErrNetwork        = errors.New("network error")
+	ErrRetryExhausted = errors.New("request failed after retries")
+	ErrWebhookInvalid = errors.New("invalid webhook signature")
+	ErrWebhookExpired = errors.New("webhook timestamp expired")
 )
 
 // APIError represents an error returned by the Anima API. It wraps a sentinel

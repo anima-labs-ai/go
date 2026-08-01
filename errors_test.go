@@ -24,10 +24,10 @@ func TestAPIError_ErrorWithoutCode(t *testing.T) {
 
 func TestAPIError_Is(t *testing.T) {
 	tests := []struct {
-		name     string
-		err      *APIError
-		target   error
-		wantIs   bool
+		name   string
+		err    *APIError
+		target error
+		wantIs bool
 	}{
 		{"auth error matches ErrAuthentication", newAuthError(401, "bad", nil), ErrAuthentication, true},
 		{"auth error does not match ErrNotFound", newAuthError(401, "bad", nil), ErrNotFound, false},
