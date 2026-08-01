@@ -31,6 +31,19 @@ jobs:
             exit 1
           fi
 
+      # Nothing checked this before, so ten files drifted out of gofmt shape
+      # (misaligned struct tags, a stray trailing blank line). Editors format
+      # on save, so unformatted files show up as spurious diffs in unrelated
+      # PRs. Fails fast, before the slower vet/test/build steps.
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "$unformatted"
+            echo "::error::The files above are not gofmt-clean. Run 'gofmt -w .' and commit the result."
+            exit 1
+          fi
+
       - name: Vet
         run: go vet ./...
 
