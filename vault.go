@@ -22,13 +22,19 @@ const (
 
 // VaultIdentity represents a vault provisioned for an agent.
 type VaultIdentity struct {
-	ID              string  `json:"id"`
-	AgentID         string  `json:"agentId"`
-	OrgID           string  `json:"orgId"`
+	ID      string `json:"id"`
+	AgentID string `json:"agentId"`
+	OrgID   string `json:"orgId"`
+	// Identifiers in the vault backend. Nil until provisioning completes.
+	VaultUserID  *string `json:"vaultUserId"`
+	VaultOrgID   *string `json:"vaultOrgId"`
+	CollectionID *string `json:"collectionId"`
+	// Status is one of ACTIVE, LOCKED, ERROR.
 	Status          string  `json:"status"`
 	CredentialCount int     `json:"credentialCount"`
 	LastSyncAt      *string `json:"lastSyncAt"`
 	CreatedAt       string  `json:"createdAt"`
+	UpdatedAt       string  `json:"updatedAt"`
 }
 
 // VaultLoginData contains login credential data.
@@ -328,6 +334,45 @@ type CancelCredentialRequestResult struct {
 	Status CredentialRequestStatus `json:"status"`
 }
 
+// CredentialRequestListItem is a credential request in the org-wide list.
+//
+// Distinct from CredentialRequest, which is what creating one returns: this
+// carries the requesting agent, type, reason and CreatedAt, and its FillURL is
+// present only while PENDING.
+type CredentialRequestListItem struct {
+	RequestID string         `json:"requestId"`
+	AgentID   string         `json:"agentId"`
+	Type      CredentialType `json:"type"`
+	Name      string         `json:"name"`
+	Reason    string         `json:"reason"`
+	// Status is lazily expired — a request past its TTL reads as EXPIRED here.
+	Status CredentialRequestStatus `json:"status"`
+	// FillURL is present only while PENDING; the URL stops working once filled.
+	FillURL      *string `json:"fillUrl"`
+	CredentialID *string `json:"credentialId"`
+	ExpiresAt    string  `json:"expiresAt"`
+	CreatedAt    string  `json:"createdAt"`
+}
+
+// ListCredentialRequestsParams filters the org's credential requests.
+type ListCredentialRequestsParams struct {
+	ListParams
+	AgentID string
+	Status  CredentialRequestStatus
+}
+
+// ToQuery converts ListCredentialRequestsParams into URL query values.
+func (p ListCredentialRequestsParams) ToQuery() url.Values {
+	q := p.ListParams.ToQuery()
+	if p.AgentID != "" {
+		q.Set("agentId", p.AgentID)
+	}
+	if p.Status != "" {
+		q.Set("status", string(p.Status))
+	}
+	return q
+}
+
 // SharePermission represents the permission level for a shared credential.
 type SharePermission string
 
@@ -554,6 +599,34 @@ func (s *VaultService) CreateCredentialRequest(ctx context.Context, params Creat
 		return nil, err
 	}
 	return &req, nil
+}
+
+// ListCredentialRequests lists credential requests across the organization,
+// newest first.
+//
+// Named credentialRequestList in the node and python SDKs.
+func (s *VaultService) ListCredentialRequests(ctx context.Context, params *ListCredentialRequestsParams) (*Page[CredentialRequestListItem], error) {
+	var q url.Values
+	if params != nil {
+		q = params.ToQuery()
+	}
+	page, err := Do[Page[CredentialRequestListItem]](ctx, s.client, http.MethodGet, "/vault/credential-requests", nil, q)
+	if err != nil {
+		return nil, err
+	}
+	return &page, nil
+}
+
+// ListCredentialRequestsAutoPaging iterates every credential request.
+func (s *VaultService) ListCredentialRequestsAutoPaging(params *ListCredentialRequestsParams) *ListIterator[CredentialRequestListItem] {
+	return NewListIterator(func(ctx context.Context, cursor string) (*Page[CredentialRequestListItem], error) {
+		p := &ListCredentialRequestsParams{}
+		if params != nil {
+			*p = *params
+		}
+		p.Cursor = cursor
+		return s.ListCredentialRequests(ctx, p)
+	})
 }
 
 // GetCredentialRequestStatus polls a credential request until it is FULFILLED.

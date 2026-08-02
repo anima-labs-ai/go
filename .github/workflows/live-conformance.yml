@@ -1,0 +1,67 @@
+name: Live API conformance
+
+# Every other test in this repo asserts against an httptest mux — a fixture
+# written by whoever wrote the code. That is how 30 calls to routes the API
+# never served stayed green for months, and how VerifyCredential came to decode
+# to an all-zero struct: the mock invented the same wrong shape the struct
+# expected. The mock always agreed with the bug.
+#
+# This job is the half a mock cannot cover: it calls a deployed API over HTTP
+# with a real key and fails on a 404 (route gone) or a 400 (the API rejected
+# the request the SDK built). See live_conformance_test.go for the full
+# verdict table.
+#
+# It is deliberately NOT part of `ci.yml`:
+#   - it needs credentials, so it cannot run on a fork PR;
+#   - it hits a real organization, so it must stay read-only and low-volume;
+#   - a live outage should not turn a code PR red.
+#
+# Daily, plus on demand. Set ANIMA_LIVE_API_KEY (and ANIMA_LIVE_ORG_ID for the
+# org-scoped probes) in repository secrets. Without them every probe skips, so
+# a fork or an unconfigured repo is green rather than broken.
+
+on:
+  schedule:
+    # 06:20 UTC — before the drift canary, so a red conformance run is the
+    # first thing seen when both fire on the same morning.
+    - cron: "20 6 * * *"
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Override the API base URL (e.g. a staging deployment)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    name: probe the deployed API
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Probe
+        env:
+          ANIMA_LIVE_API_KEY: ${{ secrets.ANIMA_LIVE_API_KEY }}
+          ANIMA_LIVE_ORG_ID: ${{ secrets.ANIMA_LIVE_ORG_ID }}
+          # Input wins over the secret so a dispatch can target staging.
+          ANIMA_LIVE_BASE_URL: ${{ inputs.base_url || secrets.ANIMA_LIVE_BASE_URL }}
+        run: go test -run TestLive -v ./...
+
+      # A green run with no key proves nothing. Say so, rather than letting the
+      # tick imply the SDK was verified. `secrets` cannot be tested directly in
+      # an `if:`, so compare it to the empty string into an env var.
+      - name: Explain a skipped run
+        if: success()
+        env:
+          HAS_KEY: ${{ secrets.ANIMA_LIVE_API_KEY != '' }}
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::warning::ANIMA_LIVE_API_KEY is not set, so every probe skipped. This job proves nothing until that secret exists."
+          fi

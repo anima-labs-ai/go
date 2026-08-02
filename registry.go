@@ -52,6 +52,17 @@ type RegistryAgentList struct {
 	Items []RegistryAgent `json:"items"`
 }
 
+// didPath percent-encodes a DID for use as a single path segment.
+//
+// Colons are legal in a path segment, so most DIDs survive raw interpolation.
+// A did:web carrying a port does not: the spec percent-encodes that colon, so
+// the DID string itself contains "%3A". Interpolated raw, the server decodes
+// it back to ":" and looks up a different DID. url.PathEscape leaves ":"
+// alone (legal) but escapes "%" and "/", which is exactly what is needed.
+func didPath(did string) string {
+	return url.PathEscape(did)
+}
+
 // RegistryService provides methods for the public agent registry.
 type RegistryService struct {
 	client *httpClient
@@ -95,7 +106,7 @@ func (s *RegistryService) Search(ctx context.Context, params RegistrySearchParam
 
 // Lookup retrieves a registry entry by DID.
 func (s *RegistryService) Lookup(ctx context.Context, did string) (*RegistryAgent, error) {
-	agent, err := Do[RegistryAgent](ctx, s.client, http.MethodGet, fmt.Sprintf("/registry/agents/%s", did), nil, nil)
+	agent, err := Do[RegistryAgent](ctx, s.client, http.MethodGet, fmt.Sprintf("/registry/agents/%s", didPath(did)), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +115,7 @@ func (s *RegistryService) Lookup(ctx context.Context, did string) (*RegistryAgen
 
 // Update updates an existing registry entry.
 func (s *RegistryService) Update(ctx context.Context, did string, params UpdateRegistryAgentParams) (*RegistryAgent, error) {
-	agent, err := Do[RegistryAgent](ctx, s.client, http.MethodPut, fmt.Sprintf("/registry/agents/%s", did), params, nil)
+	agent, err := Do[RegistryAgent](ctx, s.client, http.MethodPut, fmt.Sprintf("/registry/agents/%s", didPath(did)), params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +124,6 @@ func (s *RegistryService) Update(ctx context.Context, did string, params UpdateR
 
 // Unlist removes an agent from the public registry.
 func (s *RegistryService) Unlist(ctx context.Context, did string) error {
-	_, err := Do[struct{}](ctx, s.client, http.MethodDelete, fmt.Sprintf("/registry/agents/%s", did), nil, nil)
+	_, err := Do[struct{}](ctx, s.client, http.MethodDelete, fmt.Sprintf("/registry/agents/%s", didPath(did)), nil, nil)
 	return err
 }
