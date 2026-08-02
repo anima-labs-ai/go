@@ -22,14 +22,39 @@ import (
 // packages/contracts/src/contracts/*.ts at the commit in .anima-ref. A new
 // method reaching for a route that does not exist fails here.
 //
-// Regenerate when .anima-ref moves:
+// WHAT THIS PROVES, AND WHAT IT DOES NOT. A path in apiRoutes is DECLARED in
+// the contracts. That is not the same as "the product is alive". Killed
+// surfaces are routinely left in place — anima 894035bc deleted the OAuth
+// console pages and says the procedures "remain dormant in packages/contracts
+// + apps/api/routes/handlers/vault.ts; full backend cleanup is a separate
+// chore" — and some are declared `deprecated: true` and answer 400 by design
+// (POST /mcp-auth/sessions). So a gap between this list and the SDK is NOT by
+// itself evidence of missing coverage. In 2026-08 six dormant vault OAuth
+// routes were read that way and re-added to all three SDKs; they were removed
+// again. Check git history for a deliberate removal before filling any gap.
 //
-//	grep -rhoE 'method: "[A-Z]+", path: "[^"]+"' \
-//	  packages/contracts/src/contracts/*.ts |
-//	  sed -E 's/method: "([A-Z]+)", path: "([^"]+)"/\1 \2/' | sort -u
+// Regenerate when .anima-ref moves, from the monorepo root:
 //
-// plus the three routes registered directly on fastify rather than through
-// oRPC, which that grep does not see: GET /audit/events, GET /events/stream,
+//	python3 - <<'EOF'
+//	import re, pathlib
+//	src = "".join(p.read_text() for p in
+//	              sorted(pathlib.Path("packages/contracts/src/contracts").glob("*.ts")))
+//	out = set()
+//	for m in re.finditer(r'\.route\(\s*\{(.*?)\}\s*\)', src, re.S):
+//	    meth = re.search(r'method:\s*"([A-Z]+)"', m.group(1))
+//	    path = re.search(r'path:\s*"([^"]+)"', m.group(1))
+//	    if meth and path:
+//	        out.add(meth.group(1) + " " + re.sub(r'\{[^}]*\}', '*', path.group(1)))
+//	print("\n".join(sorted(out)))
+//	EOF
+//
+// It must parse the whole `.route({...})` object, not one line: eight routes
+// spread method and path across lines (POST /addresses/*/validate, the four
+// mcp-auth ones, three agents/*/email-identities ones). The single-line grep
+// this header used to recommend silently dropped all eight.
+//
+// Then add the three routes registered directly on fastify rather than through
+// oRPC, which no contracts scan can see: GET /audit/events, GET /events/stream,
 // POST /a2a/inbound.
 
 // apiRoutes is "METHOD /path" for every route the API serves, path params as *.
@@ -311,12 +336,22 @@ var callPattern = regexp.MustCompile(`http\.Method([A-Za-z]+),\s*(?:fmt\.Sprintf
 // pathParams differ per call site; compare shapes, not ids.
 var pathParam = regexp.MustCompile(`%[sdv]`)
 
-// Catches a path built by concatenation rather than fmt.Sprintf. callPattern
-// stops at the closing quote of the first literal, so `"/voice/calls/"+id+
-// "/transcript"` was scanned as GET /voice/calls — a real route, so it passed
-// while the segment after the id went unchecked entirely. Anything after the
-// first `+` is invisible to the guard, so require fmt.Sprintf instead.
-var concatPath = regexp.MustCompile(`http\.Method[A-Za-z]+,\s*"(/[^"]*)"\s*\+`)
+// Catches a path built by concatenation rather than a single fmt.Sprintf.
+// callPattern stops at the closing quote of the first literal, so
+// `"/voice/calls/"+id+"/transcript"` was scanned as GET /voice/calls — a real
+// route, so it passed while the segment after the id went unchecked entirely.
+// Anything after the first `+` is invisible to the guard.
+//
+// Both forms must be caught: matching only the bare literal leaves
+// `fmt.Sprintf("/voice/calls/%s", id)+"/transcript"` free to reopen the hole.
+//
+// Residual gap: a path that does not start with a literal at all
+// (`http.MethodGet, basePath+"/x"`) matches neither this nor callPattern, so
+// it is never checked. The call-count floor only catches a wholesale
+// regression, not one added method.
+var concatPath = regexp.MustCompile(
+	`http\.Method[A-Za-z]+,\s*(?:fmt\.Sprintf\(\s*"(/[^"]*)"[^)]*\)|"(/[^"]*)")\s*\+`,
+)
 
 type sdkCall struct {
 	file  string
@@ -374,9 +409,13 @@ func TestNoServiceBuildsAPathByConcatenation(t *testing.T) {
 			t.Fatalf("read %s: %v", name, err)
 		}
 		for _, m := range concatPath.FindAllStringSubmatch(string(source), -1) {
+			prefix := m[1]
+			if prefix == "" {
+				prefix = m[2]
+			}
 			t.Errorf(
-				"%s builds a path by concatenating onto %q — the route guard cannot see past the `+`. Use fmt.Sprintf.",
-				name, m[1],
+				"%s builds a path by concatenating onto %q — the route guard cannot see past the `+`. Build the whole path in one fmt.Sprintf.",
+				name, prefix,
 			)
 		}
 	}

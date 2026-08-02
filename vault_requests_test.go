@@ -295,29 +295,34 @@ func TestVaultService_CancelCredentialRequest(t *testing.T) {
 	}
 }
 
-// CredentialType must carry all seven values the contract enumerates. Only
-// four were declared, so oauth_token, api_key and certificate had no constant.
+// CredentialType must carry exactly the seven values CredentialTypeSchema
+// enumerates (packages/contracts/src/schemas/vault.ts). Only four were
+// declared: oauth_token, api_key and certificate had no constant, so a caller
+// had to hand-write the string.
+//
+// Asserted as a value set, not a loop of non-empty checks — that version could
+// not fail, and would not have noticed the three missing members either.
 func TestCredentialTypeCoversTheContract(t *testing.T) {
-	for _, want := range []CredentialType{
-		CredentialTypeLogin,
-		CredentialTypeSecureNote,
-		CredentialTypeCard,
-		CredentialTypeIdentity,
-		CredentialTypeOAuthToken,
-		CredentialTypeAPIKey,
-		CredentialTypeCertificate,
-	} {
-		if want == "" {
-			t.Error("credential type constant is empty")
+	got := map[CredentialType]bool{
+		CredentialTypeLogin:       true,
+		CredentialTypeSecureNote:  true,
+		CredentialTypeCard:        true,
+		CredentialTypeIdentity:    true,
+		CredentialTypeOAuthToken:  true,
+		CredentialTypeAPIKey:      true,
+		CredentialTypeCertificate: true,
+	}
+	want := []CredentialType{
+		"login", "secure_note", "card", "identity",
+		"oauth_token", "api_key", "certificate",
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("expected %d distinct credential types, got %d — two constants share a value", len(want), len(got))
+	}
+	for _, w := range want {
+		if !got[w] {
+			t.Errorf("no constant carries the contract value %q", w)
 		}
-	}
-	if CredentialTypeOAuthToken != "oauth_token" {
-		t.Errorf("expected 'oauth_token', got %q", CredentialTypeOAuthToken)
-	}
-	if CredentialTypeAPIKey != "api_key" {
-		t.Errorf("expected 'api_key', got %q", CredentialTypeAPIKey)
-	}
-	if CredentialTypeCertificate != "certificate" {
-		t.Errorf("expected 'certificate', got %q", CredentialTypeCertificate)
 	}
 }
