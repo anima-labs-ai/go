@@ -8,16 +8,16 @@ import (
 
 // DidDocument represents a DID (Decentralized Identifier) document for an agent.
 type DidDocument struct {
-	ID                   string                   `json:"id"`
-	Context              []string                 `json:"@context"`
-	Controller           string                   `json:"controller,omitempty"`
-	VerificationMethod   []DidVerificationMethod   `json:"verificationMethod,omitempty"`
-	Authentication       []string                 `json:"authentication,omitempty"`
-	AssertionMethod      []string                 `json:"assertionMethod,omitempty"`
-	KeyAgreement         []string                 `json:"keyAgreement,omitempty"`
-	Service              []DidService             `json:"service,omitempty"`
-	Created              string                   `json:"created,omitempty"`
-	Updated              string                   `json:"updated,omitempty"`
+	ID                 string                  `json:"id"`
+	Context            []string                `json:"@context"`
+	Controller         string                  `json:"controller,omitempty"`
+	VerificationMethod []DidVerificationMethod `json:"verificationMethod,omitempty"`
+	Authentication     []string                `json:"authentication,omitempty"`
+	AssertionMethod    []string                `json:"assertionMethod,omitempty"`
+	KeyAgreement       []string                `json:"keyAgreement,omitempty"`
+	Service            []DidService            `json:"service,omitempty"`
+	Created            string                  `json:"created,omitempty"`
+	Updated            string                  `json:"updated,omitempty"`
 }
 
 // DidVerificationMethod represents a verification method in a DID document.
@@ -38,7 +38,7 @@ type DidService struct {
 
 // DidRotateOutput contains the result of a DID key rotation.
 type DidRotateOutput struct {
-	DID     string      `json:"did"`
+	DID      string      `json:"did"`
 	Document DidDocument `json:"document"`
 	Rotated  bool        `json:"rotated"`
 }
@@ -104,10 +104,22 @@ type IssueCredentialParams struct {
 }
 
 // VerifyCredentialOutput contains the result of a credential verification.
+//
+// Credential is the decoded JWT-VC payload, left opaque on purpose: the
+// contract types it as z.record(z.unknown()).nullable()
+// (packages/contracts/src/schemas/identity.ts), and the value the API returns
+// is a JwtVcPayload — {iss, sub, vc, iat, exp, jti}, where the W3C credential
+// sits under "vc". Modelling it as a flat W3C document silently decodes every
+// field to its zero value, because none of those keys exist at the top level.
+// A JWT-VC also has no "proof" object at all; the JWS signature is the proof.
+//
+// Credential is non-nil for most invalid results too — a revoked, expired or
+// signature-mismatched credential still decodes. It is nil only when the JWT
+// itself is malformed, so check Valid, never Credential != nil.
 type VerifyCredentialOutput struct {
-	Valid   bool     `json:"valid"`
-	Checks []string `json:"checks,omitempty"`
-	Errors []string `json:"errors,omitempty"`
+	Valid      bool                   `json:"valid"`
+	Credential map[string]interface{} `json:"credential"`
+	Errors     []string               `json:"errors"`
 }
 
 // AgentCardOutput represents an agent's public card (machine-readable profile).
@@ -141,14 +153,9 @@ func (s *IdentityService) GetDID(ctx context.Context, agentID string) (*DidDocum
 	return &doc, nil
 }
 
-// ResolveDID resolves a DID to its DID document.
-func (s *IdentityService) ResolveDID(ctx context.Context, did string) (*DidDocument, error) {
-	doc, err := Do[DidDocument](ctx, s.client, http.MethodGet, fmt.Sprintf("/identity/did/%s", did), nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &doc, nil
-}
+// No ResolveDID. It called GET /identity/did/{did}, which the API has never
+// served, and resolving a DID to its owning agent is what Registry.Lookup
+// does — GET /registry/agents/{did}.
 
 // RotateKeys rotates the cryptographic keys for an agent's DID.
 func (s *IdentityService) RotateKeys(ctx context.Context, agentID string) (*DidRotateOutput, error) {

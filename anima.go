@@ -28,7 +28,7 @@ const (
 	// DefaultMaxRetries is the default number of retries for failed requests.
 	DefaultMaxRetries = 3
 	// SDKVersion is the current version of this SDK.
-	SDKVersion = "0.7.0"
+	SDKVersion = "0.8.0"
 )
 
 // Client is the Anima API client. Create one with NewClient.
@@ -67,18 +67,12 @@ type Client struct {
 	Organizations *OrganizationsService
 	// Phones provides methods for provisioning and managing phone numbers.
 	Phones *PhonesService
-	// Pods provides methods for managing agent compute pods.
-	Pods *PodsService
 	// Registry provides methods for the public agent registry.
 	Registry *RegistryService
 	// Security provides methods for content scanning and security events.
 	Security *SecurityService
 	// Vault provides methods for managing the agent credential vault.
 	Vault *VaultService
-	// VaultOAuth provides methods for managing OAuth connections.
-	VaultOAuth *VaultOAuthService
-	// Wallet provides methods for managing agent crypto wallets.
-	Wallet *WalletService
 	// Voices provides methods for browsing the voice catalog.
 	Voices *VoicesService
 	// Calls provides methods for managing voice calls.
@@ -161,12 +155,9 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		Messages:      newMessagesService(internal),
 		Organizations: newOrganizationsService(internal),
 		Phones:        newPhonesService(internal),
-		Pods:          newPodsService(internal),
 		Registry:      newRegistryService(internal),
 		Security:      newSecurityService(internal),
 		Vault:         newVaultService(internal),
-		VaultOAuth:    newVaultOAuthService(internal),
-		Wallet:        newWalletService(internal),
 		Voices:        newVoicesService(internal),
 		Calls:         newCallsService(internal),
 		Webhooks:      newWebhooksService(internal),

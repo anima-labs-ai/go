@@ -207,3 +207,115 @@ func TestIdentityService_RevokeCredential(t *testing.T) {
 		t.Errorf("expected RevokedAt '2026-07-17T12:30:00Z', got %v", vc.RevokedAt)
 	}
 }
+
+// VerifyCredential decodes the contract's {valid, credential, errors}.
+//
+// The fixture below is a real JwtVcPayload (packages/agent-identity/src/vc.ts),
+// which is what the handler returns — NOT a flat W3C document. The SDK first
+// declared a "checks" field the API has never sent, then replaced it with a
+// typed struct of id/issuer/subject/proof: none of those keys exist at the top
+// level of a JWT-VC, so every field decoded to its zero value while Valid was
+// true and Credential was non-nil. A caller reading credentialSubject got an
+// empty map and treated a verified agent as unverified.
+func TestIdentityService_VerifyCredential(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/identity/verify", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		var body struct {
+			JWTVC string `json:"jwtVc"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode body: %v", err)
+		}
+		if body.JWTVC != "eyJhbGciOiJFZERTQSJ9.e30.sig" {
+			t.Errorf("unexpected jwtVc %q", body.JWTVC)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"valid": true,
+			"credential": map[string]interface{}{
+				"iss": "did:web:agents.useanima.sh:anima:platform",
+				"sub": "did:web:agents.useanima.sh:org1:agent123",
+				"jti": "urn:uuid:vc-1",
+				"iat": 1753000000,
+				"vc": map[string]interface{}{
+					"@context":          []string{"https://www.w3.org/2018/credentials/v1"},
+					"type":              []string{"VerifiableCredential", "AnimaEmailVerified"},
+					"issuer":            "did:web:agents.useanima.sh:anima:platform",
+					"issuanceDate":      "2026-07-17T10:00:00Z",
+					"credentialSubject": map[string]interface{}{"id": "did:web:x", "email": "a@example.com"},
+				},
+			},
+			"errors": []string{},
+		})
+	})
+
+	client, ts := newTestClient(mux)
+	defer ts.Close()
+
+	result, err := client.Identity.VerifyCredential(context.Background(), "eyJhbGciOiJFZERTQSJ9.e30.sig")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.Valid {
+		t.Error("expected valid=true")
+	}
+	if result.Credential == nil {
+		t.Fatal("expected the decoded payload, got nil")
+	}
+	// The claims live under "vc", not at the top level. A struct modelling a
+	// flat W3C document reaches for result.Credential.Issuer and finds nothing.
+	if result.Credential["iss"] != "did:web:agents.useanima.sh:anima:platform" {
+		t.Errorf("unexpected iss %v", result.Credential["iss"])
+	}
+	vc, ok := result.Credential["vc"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected a nested vc object, got %T", result.Credential["vc"])
+	}
+	subject, ok := vc["credentialSubject"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected credentialSubject, got %T", vc["credentialSubject"])
+	}
+	if subject["email"] != "a@example.com" {
+		t.Errorf("credentialSubject did not decode: %v", subject)
+	}
+	if len(result.Errors) != 0 {
+		t.Errorf("expected no errors, got %v", result.Errors)
+	}
+}
+
+// A revoked credential still decodes — Credential is non-nil with valid=false.
+// Branching on Credential != nil instead of Valid would accept it.
+func TestIdentityService_VerifyCredential_RevokedStillDecodes(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/identity/verify", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"valid": false,
+			"credential": map[string]interface{}{
+				"iss": "did:web:agents.useanima.sh:anima:platform",
+				"vc":  map[string]interface{}{"type": []string{"VerifiableCredential"}},
+			},
+			"errors": []string{"revoked"},
+		})
+	})
+
+	client, ts := newTestClient(mux)
+	defer ts.Close()
+
+	result, err := client.Identity.VerifyCredential(context.Background(), "eyJ.revoked.sig")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Valid {
+		t.Error("expected valid=false")
+	}
+	if result.Credential == nil {
+		t.Error("a revoked credential still decodes — Credential must not be nil")
+	}
+	if len(result.Errors) != 1 || result.Errors[0] != "revoked" {
+		t.Errorf("expected [revoked], got %v", result.Errors)
+	}
+}

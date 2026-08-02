@@ -38,10 +38,10 @@ func main() {
 
 	// Send the email.
 	msg, err := client.Messages.SendEmail(ctx, anima.SendEmailParams{
-		AgentID: *agentID,
-		To:      []string{*to},
-		Subject: *subject,
-		Body:    *body,
+		AgentID:  *agentID,
+		To:       []string{*to},
+		Subject:  *subject,
+		Body:     *body,
 		BodyHTML: fmt.Sprintf("<html><body><p>%s</p></body></html>", *body),
 	})
 	if err != nil {

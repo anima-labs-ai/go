@@ -2,6 +2,7 @@ package anima
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -71,7 +72,7 @@ type TranscriptSegment struct {
 
 // CallTranscript contains the full transcript for a call.
 type CallTranscript struct {
-	CallID   string             `json:"callId"`
+	CallID   string              `json:"callId"`
 	Segments []TranscriptSegment `json:"segments"`
 }
 
@@ -112,7 +113,7 @@ func (s *CallsService) List(ctx context.Context, params ListCallsParams) (*CallL
 
 // Get returns a specific call by ID.
 func (s *CallsService) Get(ctx context.Context, callID string) (*Call, error) {
-	call, err := Do[Call](ctx, s.client, http.MethodGet, "/voice/calls/"+callID, nil, nil)
+	call, err := Do[Call](ctx, s.client, http.MethodGet, fmt.Sprintf("/voice/calls/%s", callID), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +131,7 @@ func (s *CallsService) Create(ctx context.Context, params CreateCallParams) (*Cr
 
 // GetTranscript returns the transcript for a call.
 func (s *CallsService) GetTranscript(ctx context.Context, callID string) (*CallTranscript, error) {
-	transcript, err := Do[CallTranscript](ctx, s.client, http.MethodGet, "/voice/calls/"+callID+"/transcript", nil, nil)
+	transcript, err := Do[CallTranscript](ctx, s.client, http.MethodGet, fmt.Sprintf("/voice/calls/%s/transcript", callID), nil, nil)
 	if err != nil {
 		return nil, err
 	}

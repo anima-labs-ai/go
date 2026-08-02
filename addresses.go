@@ -76,9 +76,9 @@ type AddressList struct {
 
 // ValidateAddressResult contains the result of address validation.
 type ValidateAddressResult struct {
-	Valid            bool     `json:"valid"`
-	Deliverable      bool     `json:"deliverable"`
-	Corrections      []string `json:"corrections,omitempty"`
+	Valid             bool     `json:"valid"`
+	Deliverable       bool     `json:"deliverable"`
+	Corrections       []string `json:"corrections,omitempty"`
 	NormalizedAddress *Address `json:"normalizedAddress,omitempty"`
 }
 

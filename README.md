@@ -150,11 +150,9 @@ All resource services are available as fields on the `Client`:
 | `client.Messages` | Send email/SMS, list and search messages (full-text + semantic) |
 | `client.Organizations` | Manage organizations and master keys |
 | `client.Phones` | Provision/release phone numbers |
-| `client.Pods` | Compute pods: create, list, update, delete, usage stats |
 | `client.Registry` | Public agent registry: register, search, lookup, update, unlist |
-| `client.Security` | Content scanning, security events |
+| `client.Security` | Security event feed, AI scanner status |
 | `client.Vault` | Credential vault: store, search, generate passwords, TOTP |
-| `client.Wallet` | Crypto wallets: create, pay, X-402 fetch, transactions, freeze |
 | `client.Webhooks` | Webhook CRUD, test delivery, list deliveries |
 
 ### Sending Email
@@ -300,37 +298,6 @@ entry, err := client.Registry.Register(ctx, anima.RegisterAgentParams{
 results, err := client.Registry.Search(ctx, anima.RegistrySearchParams{
     Query: "email assistant",
 })
-```
-
-### Wallet
-
-```go
-// Create a wallet for an agent.
-wallet, err := client.Wallet.Create(ctx, "agent_123", nil)
-
-// Make a payment.
-payment, err := client.Wallet.Pay(ctx, "agent_123", anima.WalletPayParams{
-    To:     "did:anima:recipient",
-    Amount: "1.50",
-})
-
-// Freeze a wallet.
-err = client.Wallet.Freeze(ctx, "agent_123")
-```
-
-### Pods
-
-```go
-// Create a compute pod.
-pod, err := client.Pods.Create(ctx, anima.CreatePodParams{
-    AgentID: "agent_123",
-    Name:    "worker-1",
-    Image:   "agent-runtime:latest",
-})
-
-// Check usage.
-usage, err := client.Pods.Usage(ctx, pod.ID)
-fmt.Printf("CPU: %.2f%%\n", usage.CPU)
 ```
 
 ### A2A (Agent-to-Agent)

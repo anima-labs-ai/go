@@ -17,10 +17,10 @@ type SearchPhonesParams struct {
 
 // AvailableNumber represents a phone number available for provisioning.
 type AvailableNumber struct {
-	PhoneNumber  string           `json:"phoneNumber"`
-	Region       string           `json:"region,omitempty"`
+	PhoneNumber  string            `json:"phoneNumber"`
+	Region       string            `json:"region,omitempty"`
 	Capabilities PhoneCapabilities `json:"capabilities"`
-	MonthlyCost  float64          `json:"monthlyCost,omitempty"`
+	MonthlyCost  float64           `json:"monthlyCost,omitempty"`
 }
 
 // AvailableNumberList wraps a list of available phone numbers.
@@ -109,4 +109,3 @@ func (s *PhonesService) Release(ctx context.Context, params ReleasePhoneParams) 
 	_, err := Do[struct{ Success bool }](ctx, s.client, http.MethodPost, "/phone/release", params, nil)
 	return err
 }
-

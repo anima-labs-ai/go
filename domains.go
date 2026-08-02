@@ -46,21 +46,21 @@ type DomainStatusRecord struct {
 
 // Domain represents an email domain in the Anima platform.
 type Domain struct {
-	ID                       string               `json:"id"`
-	Domain                   string               `json:"domain"`
-	Status                   DomainStatus          `json:"status"`
-	Verified                 bool                  `json:"verified"`
+	ID                        string               `json:"id"`
+	Domain                    string               `json:"domain"`
+	Status                    DomainStatus         `json:"status"`
+	Verified                  bool                 `json:"verified"`
 	VerificationCooldownUntil *string              `json:"verificationCooldownUntil"`
-	VerificationToken        string               `json:"verificationToken"`
-	VerificationMethod       VerificationMethod   `json:"verificationMethod"`
-	DKIMSelector             *string              `json:"dkimSelector"`
-	DKIMPublicKey            *string              `json:"dkimPublicKey"`
-	SPFConfigured            bool                 `json:"spfConfigured"`
-	DMARCConfigured          bool                 `json:"dmarcConfigured"`
-	MXConfigured             bool                 `json:"mxConfigured"`
-	FeedbackEnabled          bool                 `json:"feedbackEnabled"`
-	Records                  []DomainStatusRecord `json:"records"`
-	CreatedAt                string               `json:"createdAt"`
+	VerificationToken         string               `json:"verificationToken"`
+	VerificationMethod        VerificationMethod   `json:"verificationMethod"`
+	DKIMSelector              *string              `json:"dkimSelector"`
+	DKIMPublicKey             *string              `json:"dkimPublicKey"`
+	SPFConfigured             bool                 `json:"spfConfigured"`
+	DMARCConfigured           bool                 `json:"dmarcConfigured"`
+	MXConfigured              bool                 `json:"mxConfigured"`
+	FeedbackEnabled           bool                 `json:"feedbackEnabled"`
+	Records                   []DomainStatusRecord `json:"records"`
+	CreatedAt                 string               `json:"createdAt"`
 }
 
 // AddDomainParams contains the parameters for adding a domain.
