@@ -247,8 +247,42 @@ func TestLiveOrgScopedSurface(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Audit.List", func(t *testing.T) {
-		_, err := client.Audit.List(ctx, orgID, &anima.AuditLogListParams{ListParams: anima.ListParams{Limit: 1}})
+		page, err := client.Audit.List(ctx, orgID, &anima.AuditLogListParams{ListParams: anima.ListParams{Limit: 1}})
 		probe(t, err)
+		// Audit answers the FLAT envelope {items, nextCursor}. Pagination is a
+		// value type, so before Page.UnmarshalJSON handled both shapes this
+		// decoded to the zero value: HasMore false, and ListAutoPaging stopped
+		// after one page returning a nil error. Assert the cursor survived.
+		if err == nil && page != nil && len(page.Items) > 0 && page.Pagination.NextCursor == nil {
+			t.Error("flat envelope lost its cursor — Page.UnmarshalJSON is not normalizing")
+		}
+	})
+
+	// UPPERCASE in the contract; these constants were lowercase until
+	// 2026-08-04. Sent as FILTERS, so a wrong casing is a 400 rather than an
+	// empty list — Go validates nothing on the way in, so a response assertion
+	// would pass on an org with no audit rows.
+	t.Run("Audit.List_ActorTypeEnum", func(t *testing.T) {
+		for _, at := range []anima.AuditActorType{
+			anima.AuditActorAPIKey, anima.AuditActorUser,
+			anima.AuditActorSystem, anima.AuditActorAgent,
+		} {
+			_, err := client.Audit.List(ctx, orgID, &anima.AuditLogListParams{
+				ListParams: anima.ListParams{Limit: 1}, ActorType: at,
+			})
+			probe(t, err)
+		}
+	})
+
+	t.Run("Audit.List_ResultEnum", func(t *testing.T) {
+		for _, r := range []anima.AuditResult{
+			anima.AuditResultSuccess, anima.AuditResultFailure, anima.AuditResultDenied,
+		} {
+			_, err := client.Audit.List(ctx, orgID, &anima.AuditLogListParams{
+				ListParams: anima.ListParams{Limit: 1}, Result: r,
+			})
+			probe(t, err)
+		}
 	})
 
 	t.Run("Anomaly.ListAlerts", func(t *testing.T) {

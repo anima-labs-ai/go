@@ -12,12 +12,19 @@ import (
 // A2ATaskStatus represents the status of an A2A task.
 type A2ATaskStatus string
 
+// The six values A2ATaskStatusEnum actually declares. Until 2026-08-04 this
+// block was invented: "pending" and "running" are not values the API
+// has ever produced, "cancelled" was misspelled (the API uses one L), and
+// "submitted", "working" and "input_required" — including the status every new
+// task starts in — were missing entirely. Only "completed" and "failed" were
+// right. Confirmed against the A2ATask.status column default and the handler.
 const (
-	A2ATaskStatusPending   A2ATaskStatus = "pending"
-	A2ATaskStatusRunning   A2ATaskStatus = "running"
-	A2ATaskStatusCompleted A2ATaskStatus = "completed"
-	A2ATaskStatusFailed    A2ATaskStatus = "failed"
-	A2ATaskStatusCancelled A2ATaskStatus = "cancelled"
+	A2ATaskStatusSubmitted     A2ATaskStatus = "submitted"
+	A2ATaskStatusWorking       A2ATaskStatus = "working"
+	A2ATaskStatusInputRequired A2ATaskStatus = "input_required"
+	A2ATaskStatusCompleted     A2ATaskStatus = "completed"
+	A2ATaskStatusCanceled      A2ATaskStatus = "canceled"
+	A2ATaskStatusFailed        A2ATaskStatus = "failed"
 )
 
 // A2ATask represents an agent-to-agent task.

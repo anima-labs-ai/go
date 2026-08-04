@@ -46,7 +46,7 @@ func TestA2AService_Dispatch(t *testing.T) {
 		json.NewEncoder(w).Encode(A2ATask{
 			ID:        "task_001",
 			AgentID:   "agent_from",
-			Status:    A2ATaskStatusPending,
+			Status:    A2ATaskStatusSubmitted,
 			CreatedAt: "2026-07-09T00:00:00Z",
 			UpdatedAt: "2026-07-09T00:00:00Z",
 		})
@@ -66,7 +66,7 @@ func TestA2AService_Dispatch(t *testing.T) {
 	if task.ID != "task_001" {
 		t.Errorf("expected ID 'task_001', got %q", task.ID)
 	}
-	if task.Status != A2ATaskStatusPending {
+	if task.Status != A2ATaskStatusSubmitted {
 		t.Errorf("expected Status 'pending', got %q", task.Status)
 	}
 }

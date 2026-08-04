@@ -10,20 +10,25 @@ import (
 // AuditActorType represents the type of actor that performed an audited action.
 type AuditActorType string
 
+// UPPERCASE, matching AuditActorTypeEnum in the contract. These were
+// lowercase until 2026-08-04; Go does not validate responses, so the mismatch
+// was silent — comparing against AuditActorAPIKey never matched, because the
+// wire value is "API_KEY". Do not "normalise" the casing.
 const (
-	AuditActorAPIKey AuditActorType = "api_key"
-	AuditActorUser   AuditActorType = "user"
-	AuditActorSystem AuditActorType = "system"
-	AuditActorAgent  AuditActorType = "agent"
+	AuditActorAPIKey AuditActorType = "API_KEY"
+	AuditActorUser   AuditActorType = "USER"
+	AuditActorSystem AuditActorType = "SYSTEM"
+	AuditActorAgent  AuditActorType = "AGENT"
 )
 
 // AuditResult represents the outcome of an audited action.
 type AuditResult string
 
+// UPPERCASE — see AuditActorType above.
 const (
-	AuditResultSuccess AuditResult = "success"
-	AuditResultFailure AuditResult = "failure"
-	AuditResultDenied  AuditResult = "denied"
+	AuditResultSuccess AuditResult = "SUCCESS"
+	AuditResultFailure AuditResult = "FAILURE"
+	AuditResultDenied  AuditResult = "DENIED"
 )
 
 // AuditExportFormat represents the export format for audit logs.
