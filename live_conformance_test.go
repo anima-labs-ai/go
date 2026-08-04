@@ -30,6 +30,7 @@ package anima_test
 //
 //	ANIMA_LIVE_API_KEY=mk_...  # master key sees the most surface
 //	ANIMA_LIVE_ORG_ID=org_...  # required for org-scoped probes
+//	ANIMA_LIVE_AGENT_ID=...    # required for agent-scoped vault probes
 //	ANIMA_LIVE_BASE_URL=...    # optional, defaults to production
 //	go test -run TestLive ./...
 //
@@ -42,6 +43,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	anima "github.com/anima-labs-ai/go"
@@ -58,6 +60,18 @@ func liveClient(t *testing.T) *anima.Client {
 		opts = append(opts, anima.WithBaseURL(base))
 	}
 	return anima.NewClient(key, opts...)
+}
+
+// Several vault routes are agent-scoped and REJECT a master key that does not
+// name an agent ("agentId is required when using a master key"). Without one
+// they skip rather than fail for a reason unrelated to conformance.
+func liveAgentID(t *testing.T) string {
+	t.Helper()
+	agentID := os.Getenv("ANIMA_LIVE_AGENT_ID")
+	if agentID == "" {
+		t.Skip("set ANIMA_LIVE_AGENT_ID for agent-scoped vault probes")
+	}
+	return agentID
 }
 
 func liveOrgID(t *testing.T) string {
@@ -92,6 +106,12 @@ func probe(t *testing.T, err error) {
 		// it. A pass for conformance purposes.
 	case apiErr.Status == 429:
 		t.Skipf("rate limited by the live API: %v", apiErr)
+	case apiErr.Status >= 500 && strings.Contains(apiErr.Error(), "bw-serve: Unable to connect"):
+		// A vault route that reaches `bw serve` and finds nothing listening has
+		// already proved everything conformance cares about: the route exists,
+		// auth passed, and the API accepted the request the SDK built. The
+		// missing piece is the deployment's storage backend. Narrow on purpose
+		// — every other 5xx still fails below.
 	case apiErr.Status >= 500:
 		t.Errorf("5xx from the live API (likely not the SDK's fault): %v", apiErr)
 	default:
@@ -162,6 +182,46 @@ func TestLiveVaultSurface(t *testing.T) {
 	t.Run("Vault.ListCredentialRequests", func(t *testing.T) {
 		_, err := client.Vault.ListCredentialRequests(ctx, &anima.ListCredentialRequestsParams{
 			ListParams: anima.ListParams{Limit: 1},
+		})
+		probe(t, err)
+	})
+
+	t.Run("Vault.Status", func(t *testing.T) {
+		agentID := liveAgentID(t)
+		_, err := client.Vault.Status(ctx, agentID)
+		probe(t, err)
+	})
+}
+
+// An agent asking its owner for a vault or a phone number. The status and
+// resource filters are server-side enums: sending the wrong casing earns a 400,
+// and no fixture ever would.
+func TestLiveProvisioningRequests(t *testing.T) {
+	client := liveClient(t)
+	ctx := context.Background()
+
+	t.Run("ProvisioningRequests.List", func(t *testing.T) {
+		page, err := client.ProvisioningRequests.List(ctx, &anima.ListProvisioningRequestsParams{
+			ListParams: anima.ListParams{Limit: 1},
+		})
+		probe(t, err)
+		if err == nil && page.Items == nil {
+			t.Error("items was null — the envelope is not what the SDK declares")
+		}
+	})
+
+	t.Run("ProvisioningRequests.List_StatusFilter", func(t *testing.T) {
+		_, err := client.ProvisioningRequests.List(ctx, &anima.ListProvisioningRequestsParams{
+			ListParams: anima.ListParams{Limit: 1},
+			Status:     anima.ProvisioningRequestPending,
+		})
+		probe(t, err)
+	})
+
+	t.Run("ProvisioningRequests.List_ResourceFilter", func(t *testing.T) {
+		_, err := client.ProvisioningRequests.List(ctx, &anima.ListProvisioningRequestsParams{
+			ListParams: anima.ListParams{Limit: 1},
+			Resource:   anima.ProvisionableResourceVault,
 		})
 		probe(t, err)
 	})
