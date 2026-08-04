@@ -358,6 +358,45 @@ cred, err = client.Vault.CreateCredential(ctx, anima.CreateVaultCredentialParams
 })
 ```
 
+### Provisioning Requests
+
+`Vault.Provision` and `Phones.Provision` both require a master key, which an
+agent is never given. This is how an agent asks its owner instead — it files a
+request, the owner approves it in the console, and the resource is created. The
+agent gets the result, never the privilege.
+
+```go
+// As the agent: ask for a vault. Reason is shown verbatim to the owner.
+req, err := client.ProvisioningRequests.Create(ctx, anima.CreateProvisioningRequestParams{
+    Resource: anima.ProvisionableResourceVault,
+    Reason:   "To store the Stripe key so I can issue refunds",
+})
+
+// EmailSent false does NOT mean the request failed — it is live in the console
+// either way — but nobody was told, so nothing happens until someone looks.
+if !req.EmailSent {
+    log.Println("owner was not notified")
+}
+
+// Poll for the decision. DecidedNote carries the owner's reason for a decline,
+// so a second attempt can address it instead of repeating the first.
+current, err := client.ProvisioningRequests.Get(ctx, req.RequestID)
+if current.Status == anima.ProvisioningRequestApproved {
+    log.Println("provisioned:", *current.ProvisionedID)
+}
+
+// As the owner (master key only): decide.
+_, err = client.ProvisioningRequests.Approve(ctx, req.RequestID, "")
+_, err = client.ProvisioningRequests.Decline(ctx, req.RequestID, "Tell me which API first")
+
+// A phone number takes options; Starter+ plans only.
+_, err = client.ProvisioningRequests.Create(ctx, anima.CreateProvisioningRequestParams{
+    Resource: anima.ProvisionableResourcePhoneNumber,
+    Reason:   "To receive delivery notifications",
+    Options:  &anima.ProvisioningOptions{CountryCode: "US", AreaCode: "415"},
+})
+```
+
 ### Audit Logs
 
 ```go

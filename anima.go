@@ -72,7 +72,8 @@ type Client struct {
 	// Security provides methods for content scanning and security events.
 	Security *SecurityService
 	// Vault provides methods for managing the agent credential vault.
-	Vault *VaultService
+	Vault                *VaultService
+	ProvisioningRequests *ProvisioningRequestsService
 	// Voices provides methods for browsing the voice catalog.
 	Voices *VoicesService
 	// Calls provides methods for managing voice calls.
@@ -139,28 +140,29 @@ func NewClient(apiKey string, opts ...Option) *Client {
 	}
 
 	c := &Client{
-		httpClient:    internal,
-		Anomaly:       newAnomalyService(internal),
-		Audit:         newAuditService(internal),
-		A2A:           newA2AService(internal),
-		Addresses:     newAddressesService(internal),
-		Agents:        newAgentsService(internal),
-		Compliance:    newComplianceService(internal),
-		Domains:       newDomainsService(internal),
-		Drafts:        newDraftsService(internal),
-		Emails:        newEmailsService(internal),
-		Extension:     newExtensionService(internal),
-		Identity:      newIdentityService(internal),
-		Inboxes:       newInboxesService(internal),
-		Messages:      newMessagesService(internal),
-		Organizations: newOrganizationsService(internal),
-		Phones:        newPhonesService(internal),
-		Registry:      newRegistryService(internal),
-		Security:      newSecurityService(internal),
-		Vault:         newVaultService(internal),
-		Voices:        newVoicesService(internal),
-		Calls:         newCallsService(internal),
-		Webhooks:      newWebhooksService(internal),
+		httpClient:           internal,
+		Anomaly:              newAnomalyService(internal),
+		Audit:                newAuditService(internal),
+		A2A:                  newA2AService(internal),
+		Addresses:            newAddressesService(internal),
+		Agents:               newAgentsService(internal),
+		Compliance:           newComplianceService(internal),
+		Domains:              newDomainsService(internal),
+		Drafts:               newDraftsService(internal),
+		Emails:               newEmailsService(internal),
+		Extension:            newExtensionService(internal),
+		Identity:             newIdentityService(internal),
+		Inboxes:              newInboxesService(internal),
+		Messages:             newMessagesService(internal),
+		Organizations:        newOrganizationsService(internal),
+		Phones:               newPhonesService(internal),
+		Registry:             newRegistryService(internal),
+		Security:             newSecurityService(internal),
+		Vault:                newVaultService(internal),
+		ProvisioningRequests: newProvisioningRequestsService(internal),
+		Voices:               newVoicesService(internal),
+		Calls:                newCallsService(internal),
+		Webhooks:             newWebhooksService(internal),
 	}
 
 	return c
