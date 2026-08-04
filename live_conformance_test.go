@@ -83,10 +83,22 @@ func liveOrgID(t *testing.T) string {
 	return orgID
 }
 
+// reached counts probes that got a real 2xx back.
+//
+// A 401 is a pass for each probe on its own — it proves the route exists — but
+// that does not compose: a key scoped for nothing is rejected everywhere and
+// turns this whole file green having checked no path, no query param and no
+// response shape. TestLiveRunReachedTheAPI fails that run.
+//
+// No lock: every probe here runs sequentially (no subtest calls t.Parallel),
+// so -race has nothing to complain about.
+var reached int
+
 // probe applies the verdict table above to one read-only call.
 func probe(t *testing.T, err error) {
 	t.Helper()
 	if err == nil {
+		reached++
 		return
 	}
 	var apiErr *anima.APIError
@@ -265,4 +277,74 @@ func TestLiveOrgScopedSurface(t *testing.T) {
 		_, err := client.Compliance.ListTemplates(ctx, orgID)
 		probe(t, err)
 	})
+}
+
+// TestLiveDeclaredEnumsAreAccepted sends every enum value this SDK declares and
+// confirms the API accepts it.
+//
+// This is the probe that would have caught the compliance bug outright: every
+// enum shipped lowercase against a contract validating SCREAMING_SNAKE, so each
+// of these would have come back 400 — while the mocked tests passed.
+//
+// The slices name the exported constants rather than string literals, so
+// renaming or deleting one is a compile error here. Go cannot enumerate a
+// string-constant type, so a value ADDED to the set still has to be added
+// below by hand — the one gap the python probe does not have, since it
+// iterates its Enum directly.
+func TestLiveDeclaredEnumsAreAccepted(t *testing.T) {
+	client := liveClient(t)
+	orgID := liveOrgID(t)
+	ctx := context.Background()
+
+	frameworks := []anima.ComplianceFramework{
+		anima.ComplianceFrameworkSOC2,
+		anima.ComplianceFrameworkGDPR,
+		anima.ComplianceFrameworkPCI,
+	}
+	for _, framework := range frameworks {
+		t.Run("framework "+string(framework), func(t *testing.T) {
+			_, err := client.Compliance.ListControls(ctx, orgID, &anima.ComplianceControlListParams{
+				ListParams: anima.ListParams{Limit: 1},
+				Framework:  framework,
+			})
+			probe(t, err)
+		})
+	}
+
+	severities := []anima.SecuritySeverity{
+		anima.SecuritySeverityLow,
+		anima.SecuritySeverityMedium,
+		anima.SecuritySeverityHigh,
+		anima.SecuritySeverityCritical,
+	}
+	for _, severity := range severities {
+		t.Run("severity "+string(severity), func(t *testing.T) {
+			_, err := client.Security.ListEvents(ctx, anima.SecurityEventsListParams{
+				ListParams: anima.ListParams{Limit: 1},
+				OrgID:      orgID,
+				Severity:   severity,
+			})
+			probe(t, err)
+		})
+	}
+}
+
+// TestLiveRunReachedTheAPI fails a run in which no probe ever got a 2xx.
+//
+// Every verdict in probe() is sound on its own, but "401 is a pass" does not
+// compose: a key with no scopes is rejected everywhere, each probe passes
+// because the route demonstrably exists, and this file goes green having
+// verified nothing at all — the same hollow tick the mocks were giving us,
+// which is the entire reason the file exists.
+//
+// Deliberately the last test in the file: go test runs a file's tests in
+// source order, so every probe above has already run and settled `reached`.
+func TestLiveRunReachedTheAPI(t *testing.T) {
+	liveClient(t) // skip along with every other probe when no key is set
+	if reached == 0 {
+		t.Error("no probe reached the API: every call was rejected (401/403), " +
+			"rate limited, or skipped, so this run verified no path, no query " +
+			"param and no response shape. Check that ANIMA_LIVE_API_KEY is valid " +
+			"and scoped — a green run in this state would prove nothing.")
+	}
 }

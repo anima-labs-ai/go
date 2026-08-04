@@ -50,6 +50,10 @@ jobs:
         env:
           ANIMA_LIVE_API_KEY: ${{ secrets.ANIMA_LIVE_API_KEY }}
           ANIMA_LIVE_ORG_ID: ${{ secrets.ANIMA_LIVE_ORG_ID }}
+          # Several vault routes reject a master key that does not name an
+          # agent. Without this the agent-scoped probes skip silently, so a
+          # green run would be quietly narrower than it looks.
+          ANIMA_LIVE_AGENT_ID: ${{ secrets.ANIMA_LIVE_AGENT_ID }}
           # Input wins over the secret so a dispatch can target staging.
           ANIMA_LIVE_BASE_URL: ${{ inputs.base_url || secrets.ANIMA_LIVE_BASE_URL }}
         run: go test -run TestLive -v ./...
