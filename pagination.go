@@ -2,6 +2,7 @@ package anima
 
 import (
 	"context"
+	"encoding/json"
 	"net/url"
 	"strconv"
 )
@@ -10,6 +11,48 @@ import (
 type Page[T any] struct {
 	Items      []T              `json:"items"`
 	Pagination CursorPagination `json:"pagination"`
+	// TotalCount is sent only by the endpoints that report one (audit logs);
+	// nil means the endpoint sent none, never "zero results".
+	TotalCount *int `json:"totalCount,omitempty"`
+}
+
+// UnmarshalJSON accepts either list envelope the API uses.
+//
+// Roughly a third of list endpoints answer {items, nextCursor} rather than
+// {items, pagination: {nextCursor, hasMore}} — audit logs, anomaly alerts and
+// rules, compliance controls/reports/dsars, A2A tasks. Neither is "the
+// standard": across the contracts the split is 23 outputs to 24.
+//
+// Without this the flat shape decoded Pagination to its ZERO VALUE, so
+// HasMore was false and NextCursor nil. That is the worst possible failure
+// shape for a paginated read: ListAutoPaging stopped after the first page and
+// returned a nil error, so a caller iterating 60 audit entries silently got 5
+// and no indication anything was wrong. Verified against a live API before
+// this fix.
+//
+// HasMore is derived — these endpoints never send it, and signal the end of a
+// list with a null nextCursor.
+func (p *Page[T]) UnmarshalJSON(data []byte) error {
+	// Alias to avoid recursing into this method.
+	type pageAlias Page[T]
+	var nested struct {
+		pageAlias
+		Pagination *CursorPagination `json:"pagination"`
+		NextCursor *string           `json:"nextCursor"`
+	}
+	if err := json.Unmarshal(data, &nested); err != nil {
+		return err
+	}
+	*p = Page[T](nested.pageAlias)
+	if nested.Pagination != nil {
+		p.Pagination = *nested.Pagination
+		return nil
+	}
+	p.Pagination = CursorPagination{
+		NextCursor: nested.NextCursor,
+		HasMore:    nested.NextCursor != nil,
+	}
+	return nil
 }
 
 // CursorPagination contains cursor-based pagination metadata.
