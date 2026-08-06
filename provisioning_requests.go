@@ -57,6 +57,8 @@ type ProvisioningRequest struct {
 	// DecidedNote is the owner's note, typically why it was declined —
 	// surfaced so a second attempt can address the objection.
 	DecidedNote *string `json:"decidedNote"`
+	// Permission is present only on a GENERIC request.
+	Permission *PermissionRequestDetail `json:"permission"`
 	// ProvisionedID is the vault or phone identity id once APPROVED.
 	ProvisionedID *string `json:"provisionedId"`
 	CreatedAt     string  `json:"createdAt"`
@@ -83,11 +85,45 @@ type CreateProvisioningRequestParams struct {
 	Options *ProvisioningOptions `json:"options,omitempty"`
 }
 
+// PermissionGrantKind is how approving a permission request grants it.
+//
+// PermissionGrantOnce binds the grant to the exact arguments the owner read and
+// is spent after one successful call. PermissionGrantAlways allows the
+// procedure indefinitely and does not expire. PermissionGrantReads allows every
+// read-only procedure at once ("Bypass"); the API refuses it for a procedure
+// that is not read-only.
+type PermissionGrantKind string
+
+const (
+	PermissionGrantOnce   PermissionGrantKind = "once"
+	PermissionGrantAlways PermissionGrantKind = "always"
+	PermissionGrantReads  PermissionGrantKind = "reads"
+)
+
 // DecideProvisioningRequestParams is the body for approve and decline.
 type DecideProvisioningRequestParams struct {
 	RequestID string `json:"requestId"`
 	// Note reaches the agent, so a retry can address the objection.
 	Note string `json:"note,omitempty"`
+	// Grant is REQUIRED when approving a GENERIC (permission) request and is
+	// rejected on a resource request. There is no default: "once" and "always"
+	// are very different commitments, and guessing between them is not the
+	// SDK's call — approving a permission request without it returns 422.
+	Grant PermissionGrantKind `json:"grant,omitempty"`
+}
+
+// PermissionRequestDetail is what a GENERIC request is asking for — the
+// operation an agent was refused. Nil on a resource provisioning request.
+type PermissionRequestDetail struct {
+	// ProcedurePath is dotted, e.g. "agent.delete".
+	ProcedurePath string `json:"procedurePath"`
+	// ReadOnly is derived from the contract server-side so a client never
+	// re-derives it, and is what makes a "reads" grant applicable.
+	ReadOnly bool `json:"readOnly"`
+	// ArgumentPreview is a redacted sketch of the call's arguments. Nil —
+	// rather than empty — when the input was not an object, so "nothing to
+	// show" stays distinguishable from "shown and empty".
+	ArgumentPreview map[string]string `json:"argumentPreview"`
 }
 
 // ListProvisioningRequestsParams filters the request list.
@@ -189,8 +225,9 @@ func (s *ProvisioningRequestsService) Get(ctx context.Context, requestID string)
 // Provisioning happens before the request is marked APPROVED, so a failure
 // (plan too low, no numbers available, provider down) leaves it PENDING — fix
 // the cause and approve again.
-func (s *ProvisioningRequestsService) Approve(ctx context.Context, requestID string, note string) (*ProvisioningRequest, error) {
-	body := DecideProvisioningRequestParams{RequestID: requestID, Note: note}
+func (s *ProvisioningRequestsService) Approve(ctx context.Context, requestID string, params DecideProvisioningRequestParams) (*ProvisioningRequest, error) {
+	body := params
+	body.RequestID = requestID
 	result, err := Do[ProvisioningRequest](ctx, s.client, http.MethodPost, fmt.Sprintf("/provisioning-requests/%s/approve", url.PathEscape(requestID)), body, nil)
 	if err != nil {
 		return nil, err
@@ -202,8 +239,9 @@ func (s *ProvisioningRequestsService) Approve(ctx context.Context, requestID str
 //
 // Soft — the agent may ask again, so pass a note saying what would change your
 // mind.
-func (s *ProvisioningRequestsService) Decline(ctx context.Context, requestID string, note string) (*ProvisioningRequest, error) {
-	body := DecideProvisioningRequestParams{RequestID: requestID, Note: note}
+func (s *ProvisioningRequestsService) Decline(ctx context.Context, requestID string, params DecideProvisioningRequestParams) (*ProvisioningRequest, error) {
+	body := params
+	body.RequestID = requestID
 	result, err := Do[ProvisioningRequest](ctx, s.client, http.MethodPost, fmt.Sprintf("/provisioning-requests/%s/decline", url.PathEscape(requestID)), body, nil)
 	if err != nil {
 		return nil, err
