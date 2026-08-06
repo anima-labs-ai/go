@@ -16,6 +16,11 @@ type ProvisionableResource string
 const (
 	ProvisionableResourceVault       ProvisionableResource = "VAULT"
 	ProvisionableResourcePhoneNumber ProvisionableResource = "PHONE_NUMBER"
+	// Generic appears on RESPONSES and as a list filter, never on create: such a
+	// row records a master-gated procedure an agent actually attempted, and is
+	// written only by the server, which knows the real procedure and arguments.
+	// Creating one is refused by the API.
+	ProvisionableResourceGeneric ProvisionableResource = "GENERIC"
 )
 
 // ProvisioningRequestStatus is the lifecycle state of a provisioning request.
