@@ -29,8 +29,8 @@ func main() {
 	} else {
 		fmt.Printf("\nCalls: %d (total: %d)\n", len(calls.Calls), calls.Total)
 		for _, call := range calls.Calls {
-			fmt.Printf("  Call: %s | %s | %s | %s -> %s | tier=%s\n",
-				call.ID, call.Direction, call.State, call.From, call.To, call.Tier)
+			fmt.Printf("  Call: %s | %s | %s | %s -> %s\n",
+				call.ID, call.Direction, call.State, call.From, call.To)
 		}
 	}
 
@@ -42,8 +42,8 @@ func main() {
 			fmt.Printf("Get call error: %v\n", err)
 		} else {
 			fmt.Printf("\nGet call %s:\n", callID)
-			fmt.Printf("  Direction: %s\n  State: %s\n  From: %s\n  To: %s\n  Tier: %s\n",
-				call.Direction, call.State, call.From, call.To, call.Tier)
+			fmt.Printf("  Direction: %s\n  State: %s\n  From: %s\n  To: %s\n",
+				call.Direction, call.State, call.From, call.To)
 		}
 	}
 

@@ -14,7 +14,6 @@ type Call struct {
 	AgentID         string  `json:"agentId"`
 	PhoneIdentityID string  `json:"phoneIdentityId"`
 	Direction       string  `json:"direction"`
-	Tier            string  `json:"tier"`
 	State           string  `json:"state"`
 	From            string  `json:"from"`
 	To              string  `json:"to"`
@@ -45,7 +44,6 @@ type ListCallsParams struct {
 type CreateCallParams struct {
 	To         string `json:"to"`
 	AgentID    string `json:"agentId,omitempty"`
-	Tier       string `json:"tier,omitempty"`
 	Greeting   string `json:"greeting,omitempty"`
 	FromNumber string `json:"fromNumber,omitempty"`
 }
@@ -56,7 +54,6 @@ type CreateCallOutput struct {
 	State     string `json:"state"`
 	From      string `json:"from"`
 	To        string `json:"to"`
-	Tier      string `json:"tier"`
 	Direction string `json:"direction"`
 }
 

@@ -100,9 +100,6 @@ func (vc *VoiceConnection) Send(msgType string, data map[string]interface{}) err
 func (vc *VoiceConnection) CreateCall(to string, opts *CreateCallOptions) error {
 	data := map[string]interface{}{"to": to}
 	if opts != nil {
-		if opts.Tier != "" {
-			data["tier"] = opts.Tier
-		}
 		if opts.Greeting != "" {
 			data["greeting"] = opts.Greeting
 		}
@@ -115,7 +112,6 @@ func (vc *VoiceConnection) CreateCall(to string, opts *CreateCallOptions) error 
 
 // CreateCallOptions contains optional parameters for creating a call via WebSocket.
 type CreateCallOptions struct {
-	Tier       string
 	Greeting   string
 	FromNumber string
 }
