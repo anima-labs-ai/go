@@ -105,10 +105,16 @@ type DecideProvisioningRequestParams struct {
 	RequestID string `json:"requestId"`
 	// Note reaches the agent, so a retry can address the objection.
 	Note string `json:"note,omitempty"`
-	// Grant is REQUIRED when approving a GENERIC (permission) request and is
-	// rejected on a resource request. There is no default: "once" and "always"
-	// are very different commitments, and guessing between them is not the
-	// SDK's call — approving a permission request without it returns 422.
+	// Grant is REQUIRED when approving a GENERIC (permission) request. There is
+	// no default: "once" and "always" are very different commitments, and
+	// guessing between them is not the SDK's call — approving a permission
+	// request without it returns 422.
+	//
+	// This struct is the body for BOTH approve and decline, mirroring the one
+	// input the API declares, so the compiler will let you set Grant on either.
+	// Only approving a permission request accepts it: the server answers 422
+	// for a grant on a resource request, and 422 for a grant on any decline,
+	// rather than ignoring it.
 	Grant PermissionGrantKind `json:"grant,omitempty"`
 }
 
