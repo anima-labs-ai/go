@@ -34,13 +34,6 @@ type PhoneCapabilities struct {
 	Voice bool `json:"voice"`
 }
 
-// PhoneProvider is the telephony provider for a phone number.
-type PhoneProvider string
-
-const (
-	PhoneProviderTelnyx PhoneProvider = "TELNYX"
-)
-
 // TenDLCStatus represents the 10DLC registration status.
 type TenDLCStatus string
 
@@ -55,12 +48,17 @@ const (
 type PhoneIdentity struct {
 	ID           string            `json:"id"`
 	PhoneNumber  string            `json:"phoneNumber"`
-	Provider     PhoneProvider     `json:"provider"`
 	ProviderID   *string           `json:"providerId"`
 	Capabilities PhoneCapabilities `json:"capabilities"`
 	TenDLCStatus TenDLCStatus      `json:"tenDlcStatus"`
 	IsPrimary    bool              `json:"isPrimary"`
-	CreatedAt    string            `json:"createdAt"`
+	// VoiceID is the voice this number answers with, from the voice catalog.
+	// Nil falls back to the agent's voice, then the system default — so one
+	// agent's support line and sales line can sound different. Nil is also
+	// what a provision response carries: PhoneProvisionOutput does not
+	// declare the field, and this struct serves both routes.
+	VoiceID   *string `json:"voiceId"`
+	CreatedAt string  `json:"createdAt"`
 }
 
 // Agent represents an Anima agent.
