@@ -540,27 +540,47 @@ is never returned by `Get` or `List`. To remove auth when updating, pass
 
 ## Webhook Verification
 
-Verify incoming webhook signatures using HMAC-SHA256:
+Every delivery carries **two** headers, and you need both. The signature is an
+HMAC-SHA256 over `{timestamp}.{rawBody}`, so a receiver that reads only
+`X-Anima-Signature` cannot recompute it:
+
+| Header | Contents |
+| --- | --- |
+| `X-Anima-Signature` | `v1=<hex>` |
+| `X-Anima-Timestamp` | ISO-8601, and part of the signed content |
+| `X-Anima-Event` | The event name |
+| `X-Anima-Delivery-Id` | Stable across retries — use it as your idempotency key |
 
 ```go
 import "net/http"
 
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
+    // The raw body. A body that has been decoded and re-encoded will not
+    // verify, even for a genuine delivery — the MAC covers bytes.
     payload, _ := io.ReadAll(r.Body)
-    signature := r.Header.Get("Anima-Signature")
 
-    event, err := anima.ConstructWebhookEvent(payload, signature, "whsec_your_secret", nil)
+    headers := anima.WebhookHeaders{
+        Signature: r.Header.Get("X-Anima-Signature"),
+        Timestamp: r.Header.Get("X-Anima-Timestamp"),
+    }
+
+    event, err := anima.ConstructWebhookEvent(payload, headers, "whsec_your_secret", nil)
     if err != nil {
         http.Error(w, "Invalid signature", http.StatusForbidden)
         return
     }
 
-    switch event.Type {
-    case "agent.created":
-        fmt.Printf("New agent: %v\n", event.Data["name"])
-    case "message.received":
-        fmt.Printf("Message from: %v\n", event.Data["fromAddress"])
+    // The payload is flat — there is no "data" envelope to unwrap. Fields holds
+    // every field, keyed by its wire name.
+    switch event.Event {
+    case anima.WebhookEventAgentCreated:
+        fmt.Printf("New agent: %v\n", event.Fields["name"])
+    case anima.WebhookEventMessageReceived:
+        fmt.Printf("Message from: %v\n", event.Fields["fromAddress"])
     }
+
+    // Retries reuse X-Anima-Delivery-Id, so it is the idempotency key.
+    _ = r.Header.Get("X-Anima-Delivery-Id")
 
     w.WriteHeader(http.StatusOK)
 }

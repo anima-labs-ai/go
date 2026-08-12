@@ -10,16 +10,34 @@ import (
 // WebhookEventType represents the type of event a webhook can subscribe to.
 type WebhookEventType string
 
+// Every event the platform emits, mirroring the table published at
+// docs.useanima.sh/webhooks. GET /webhooks/event-types returns the same list
+// from the live API.
+//
+// Subscribing to a name that is not on this list is accepted by the API and
+// then never fires, so these constants are the only thing standing between a
+// typo and an endpoint that silently receives nothing.
 const (
-	WebhookEventMessageReceived  WebhookEventType = "message.received"
-	WebhookEventMessageSent      WebhookEventType = "message.sent"
-	WebhookEventMessageFailed    WebhookEventType = "message.failed"
-	WebhookEventMessageBounced   WebhookEventType = "message.bounced"
-	WebhookEventAgentCreated     WebhookEventType = "agent.created"
-	WebhookEventAgentUpdated     WebhookEventType = "agent.updated"
-	WebhookEventAgentDeleted     WebhookEventType = "agent.deleted"
-	WebhookEventPhoneProvisioned WebhookEventType = "phone.provisioned"
-	WebhookEventPhoneReleased    WebhookEventType = "phone.released"
+	WebhookEventMessageReceived WebhookEventType = "message.received"
+	// Inbound mail detected as automated. Fires *instead of* message.received.
+	WebhookEventMessageReceivedAuto          WebhookEventType = "message.received.auto"
+	WebhookEventMessageSent                  WebhookEventType = "message.sent"
+	WebhookEventMessageFailed                WebhookEventType = "message.failed"
+	WebhookEventMessageBounced               WebhookEventType = "message.bounced"
+	WebhookEventMessageLoopDetected          WebhookEventType = "message.loop_detected"
+	WebhookEventAgentCreated                 WebhookEventType = "agent.created"
+	WebhookEventAgentUpdated                 WebhookEventType = "agent.updated"
+	WebhookEventAgentDeleted                 WebhookEventType = "agent.deleted"
+	WebhookEventPhoneProvisioned             WebhookEventType = "phone.provisioned"
+	WebhookEventPhoneReleased                WebhookEventType = "phone.released"
+	WebhookEventCallStarted                  WebhookEventType = "call.started"
+	WebhookEventCallEnded                    WebhookEventType = "call.ended"
+	WebhookEventCallSummaryReady             WebhookEventType = "call.summary.ready"
+	WebhookEventCallScoreReady               WebhookEventType = "call.score.ready"
+	WebhookEventCallSecurityAlert            WebhookEventType = "call.security.alert"
+	WebhookEventCallSecurityScanReady        WebhookEventType = "call.security.scan.ready"
+	WebhookEventA2ATaskReceived              WebhookEventType = "a2a.task.received"
+	WebhookEventVaultCredentialRefreshFailed WebhookEventType = "vault.credential.refresh_failed"
 )
 
 // WebhookAuthType is the auth scheme the platform presents to a webhook
