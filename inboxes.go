@@ -14,8 +14,24 @@ type Inbox struct {
 	Domain      string  `json:"domain"`
 	LocalPart   string  `json:"localPart"`
 	DisplayName *string `json:"displayName"`
-	AgentID     *string `json:"agentId"`
-	CreatedAt   string  `json:"createdAt"`
+	// AgentID is never empty. Inbox.agentId is NOT NULL in the schema and
+	// unowned mailboxes were removed under "one agent, one inbox"; it was
+	// declared nullable until anima ad326da5, which invited callers to handle a
+	// state the database forbids.
+	AgentID   string `json:"agentId"`
+	CreatedAt string `json:"createdAt"`
+}
+
+// InboxListItem is an Inbox plus the two fields the list endpoint adds and the
+// single-inbox Get does not return.
+type InboxListItem struct {
+	Inbox
+	// AgentName names the owning agent. Carried on the row because AgentID
+	// alone is a cuid; without it every caller wanting a name refetched the
+	// agent list and joined by hand.
+	AgentName string `json:"agentName"`
+	// UnreadCount is the number of unread messages in this inbox.
+	UnreadCount int `json:"unreadCount"`
 }
 
 // CreateInboxParams contains the parameters for creating an inbox.
@@ -87,12 +103,12 @@ func (s *InboxesService) Get(ctx context.Context, id string) (*Inbox, error) {
 }
 
 // List returns a paginated list of inboxes.
-func (s *InboxesService) List(ctx context.Context, params *InboxListParams) (*Page[Inbox], error) {
+func (s *InboxesService) List(ctx context.Context, params *InboxListParams) (*Page[InboxListItem], error) {
 	var q url.Values
 	if params != nil {
 		q = params.ToQuery()
 	}
-	page, err := Do[Page[Inbox]](ctx, s.client, http.MethodGet, "/inboxes", nil, q)
+	page, err := Do[Page[InboxListItem]](ctx, s.client, http.MethodGet, "/inboxes", nil, q)
 	if err != nil {
 		return nil, err
 	}
@@ -100,8 +116,8 @@ func (s *InboxesService) List(ctx context.Context, params *InboxListParams) (*Pa
 }
 
 // ListAutoPaging returns an iterator that automatically paginates through all inboxes.
-func (s *InboxesService) ListAutoPaging(params *InboxListParams) *ListIterator[Inbox] {
-	return NewListIterator(func(ctx context.Context, cursor string) (*Page[Inbox], error) {
+func (s *InboxesService) ListAutoPaging(params *InboxListParams) *ListIterator[InboxListItem] {
+	return NewListIterator(func(ctx context.Context, cursor string) (*Page[InboxListItem], error) {
 		p := &InboxListParams{}
 		if params != nil {
 			*p = *params

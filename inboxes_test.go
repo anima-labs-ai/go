@@ -33,7 +33,6 @@ func TestInboxesService_Create(t *testing.T) {
 		}
 
 		displayName := "Support Inbox"
-		agentID := "agent_123"
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(Inbox{
@@ -42,7 +41,7 @@ func TestInboxesService_Create(t *testing.T) {
 			Domain:      "agents.useanima.sh",
 			LocalPart:   "support",
 			DisplayName: &displayName,
-			AgentID:     &agentID,
+			AgentID:     "agent_123",
 			CreatedAt:   "2026-07-16T00:00:00Z",
 		})
 	})
@@ -68,8 +67,8 @@ func TestInboxesService_Create(t *testing.T) {
 	if inbox.DisplayName == nil || *inbox.DisplayName != "Support Inbox" {
 		t.Errorf("expected DisplayName 'Support Inbox', got %v", inbox.DisplayName)
 	}
-	if inbox.AgentID == nil || *inbox.AgentID != "agent_123" {
-		t.Errorf("expected AgentID 'agent_123', got %v", inbox.AgentID)
+	if inbox.AgentID != "agent_123" {
+		t.Errorf("expected AgentID 'agent_123', got %q", inbox.AgentID)
 	}
 }
 
@@ -92,6 +91,7 @@ func TestInboxesService_Create_Minimal(t *testing.T) {
 			Email:     "swift-falcon-9d2@agents.useanima.sh",
 			Domain:    "agents.useanima.sh",
 			LocalPart: "swift-falcon-9d2",
+			AgentID:   "agent_auto",
 			CreatedAt: "2026-07-16T00:00:00Z",
 		})
 	})
@@ -109,8 +109,10 @@ func TestInboxesService_Create_Minimal(t *testing.T) {
 	if inbox.DisplayName != nil {
 		t.Errorf("expected nil DisplayName, got %v", *inbox.DisplayName)
 	}
-	if inbox.AgentID != nil {
-		t.Errorf("expected nil AgentID, got %v", *inbox.AgentID)
+	// Not "nil when unassigned": an inbox always has an owner, so a create
+	// that names no agent still comes back with the one the server picked.
+	if inbox.AgentID != "agent_auto" {
+		t.Errorf("expected AgentID 'agent_auto', got %q", inbox.AgentID)
 	}
 }
 
