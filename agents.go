@@ -42,6 +42,16 @@ const (
 	TenDLCStatusRegistered  TenDLCStatus = "REGISTERED"
 	TenDLCStatusRejected    TenDLCStatus = "REJECTED"
 	TenDLCStatusNotRequired TenDLCStatus = "NOT_REQUIRED"
+	// TenDLCStatusUnregistered is the state every newly provisioned US long
+	// code starts in: US-destined SMS is refused with TEN_DLC_NOT_REGISTERED
+	// until a campaign is approved, though the number can still text non-US
+	// destinations.
+	//
+	// Missing from this set since the contract added it (anima #314,
+	// 2026-07-17), so comparing against the constants above never matched the
+	// one value a fresh US number actually carries. The drift canary cannot
+	// catch this class of gap: it landed before the pin the canary diffs from.
+	TenDLCStatusUnregistered TenDLCStatus = "UNREGISTERED"
 )
 
 // PhoneIdentity represents a phone identity attached to an agent.

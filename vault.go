@@ -190,6 +190,10 @@ type ListVaultIdentitiesParams struct {
 	ListParams
 	// Status is one of ACTIVE, LOCKED, ERROR. Empty means no filter.
 	Status string
+	// Query is a free-text search over the owning agent's name and slug. A
+	// vault identity has no name of its own, so this is the only text search
+	// that means anything here.
+	Query string
 }
 
 // ToQuery converts ListVaultIdentitiesParams into URL query values.
@@ -197,6 +201,9 @@ func (p ListVaultIdentitiesParams) ToQuery() url.Values {
 	q := p.ListParams.ToQuery()
 	if p.Status != "" {
 		q.Set("status", p.Status)
+	}
+	if p.Query != "" {
+		q.Set("query", p.Query)
 	}
 	return q
 }

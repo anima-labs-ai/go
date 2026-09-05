@@ -64,8 +64,12 @@ type AuditLogListParams struct {
 	ResourceType string
 	ResourceID   string
 	Result       AuditResult
-	From         string
-	To           string
+	// Query is a free-text search over action, actor id, resource type and
+	// resource id. It narrows *with* the exact-match filters above rather than
+	// replacing them.
+	Query string
+	From  string
+	To    string
 }
 
 // ToQuery converts AuditLogListParams to URL query values.
@@ -89,6 +93,9 @@ func (p AuditLogListParams) ToQuery() url.Values {
 	if p.Result != "" {
 		q.Set("result", string(p.Result))
 	}
+	if p.Query != "" {
+		q.Set("query", p.Query)
+	}
 	if p.From != "" {
 		q.Set("from", p.From)
 	}
@@ -106,6 +113,10 @@ type AuditLogExportParams struct {
 	ActorID      string            `json:"actorId,omitempty"`
 	Action       string            `json:"action,omitempty"`
 	ResourceType string            `json:"resourceType,omitempty"`
+	// Query is the same free-text search as AuditLogListParams.Query. An export
+	// that ignored the active search would hand back rows the screen had just
+	// filtered away.
+	Query string `json:"query,omitempty"`
 }
 
 // AuditLogExportOutput contains the result of an audit log export.
